@@ -17,5 +17,5 @@ assert.match(read('src/settings/disk-writer.js'),/createWritable/);
 assert.match(read('src/settings/disk-writer.js'),/opfs-writer\.worker\.js/);
 assert.match(read('src/settings/opfs-writer.worker.js'),/createSyncAccessHandle/);
 assert.match(read('vite.config.js'),/input:'index.html'/);
-assert.match(read('scripts/write-sw.mjs'),/verdant-shell-v1\.6\.6/);
+assert.match(read('scripts/write-sw.mjs'),/verdant-shell-v1\.6\.7/);
 console.log('PASS: v1.6.1 single entry, Settings-only workspace cleanup, on-demand ZIP/photo tools, disk-backed Safari fallback');

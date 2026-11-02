@@ -1,10 +1,10 @@
-/* Verdant v1.6.6 (Vue 3) — offline-first garden inventory with local MapLibre GL JS.
+/* Verdant v1.6.7 (Vue 3) — offline-first garden inventory with local MapLibre GL JS.
    IndexedDB stores: plants (GeoJSON geometry), plantTypes, images (Blobs), settings.
    No remote maps, analytics, backend, or required online services at runtime. */
 'use strict';
 
 const DB_NAME = 'verdant-garden-v2';
-const SHELL_CACHE = 'verdant-shell-v1.6.6-';
+const SHELL_CACHE = 'verdant-shell-v1.6.7-';
 const DB_VERSION = 1;
 const BACKUP_FORMAT = 'verdant-garden-backup';
 const BACKUP_SCHEMA = 2;

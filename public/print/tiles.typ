@@ -8,7 +8,8 @@
 #let get-type(row, types) = types.find(t => t.id == field(row.plant, "plantTypeId"))
 #let color-of(row, types) = {
   let t = get-type(row, types)
-  let raw = if t == none { "#275e44" } else { field(t, "color", fallback: "#275e44") }
+  if t == none { return rgb("75837b") }
+  let raw = field(t, "color", fallback: "#275e44")
   if type(raw) != str or not raw.starts-with("#") or (raw.len() != 7 and raw.len() != 4) { rgb("275e44") } else { rgb(raw) }
 }
 #let scientific(row, types) = {

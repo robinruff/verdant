@@ -15,5 +15,5 @@ assert.match(app,/window\.VerdantUI\.plantCards/);
 assert.match(app,/window\.VerdantUI\.typeCards/);
 assert.match(html,/src="\.\/src\/main.js"/);
 assert.match(read('src/main.js'),/mountGarden\(\)/);
-assert.match(read('scripts/write-sw.mjs'),/verdant-shell-v1\.6\.6/);
+assert.match(read('scripts/write-sw.mjs'),/verdant-shell-v1\.6\.7/);
 console.log('PASS: Vue 3 root, component lists, compatibility DB/schema, static entry and SW version');
