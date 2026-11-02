@@ -9,7 +9,7 @@ const files=await walk(root);
 files.push('./photo-optimizer.js?v=1.6.5');
 // Navigation-first update policy; immutable revisioned assets stay cache-first.
 const output=`/* Verdant 1.6.5: offline static shell, never touches IndexedDB. */
-const CACHE='verdant-shell-v1.6.5';
+const CACHE='verdant-shell-v1.6.5-security1';
 const FILES=${JSON.stringify(files)};
 const OPTIONAL_VENDOR=[];
 self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(async c=>{

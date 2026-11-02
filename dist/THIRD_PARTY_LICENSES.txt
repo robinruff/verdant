@@ -1,4 +1,4 @@
-MapLibre GL JS 5.12.0
+MapLibre GL JS 6.16.0
 Copyright (c) 2023, MapLibre contributors
 
 All rights reserved.

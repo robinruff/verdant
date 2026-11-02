@@ -1,3 +1,15 @@
+## Dependency security update
+
+MapLibre GL JS is pinned to **6.16.0** and Vite to **6.4.5** to address the
+reported npm advisories. Run `npm ci` to install the committed dependency lockfile.
+The checked-in portable distribution and vendored MapLibre assets have also
+been updated; both build paths ship the separate local MapLibre module worker.
+MapLibre 6 requires **WebGL2** and modern ES2022-capable browsers. Check map
+rendering on target phones before deployment. Browser data and backup schemas
+are unchanged. Service-worker caches use a new `security1` suffix to replace
+previous assets without clearing IndexedDB. The dependency audit reports zero
+known vulnerabilities at the time of this update.
+
 ## Print-ready backup ZIPs
 
 **New:** Settings → Back up & restore → Create backup produces the same
@@ -50,7 +62,7 @@ old version still appears. Do not delete site data to force the update.
 
 # Verdant Garden PWA — v1.6.5
 
-Offline-first Vue 3 garden inventory, with MapLibre GL JS 5.12.0, IndexedDB,
+Offline-first Vue 3 garden inventory, with MapLibre GL JS 6.16.0, IndexedDB,
 local photos, and disk-backed ZIP backups.
 
 ## Portable photo settings in backups
@@ -87,9 +99,9 @@ and local map imagery. Export and verify a backup first. Use the same origin
 The source includes two build paths:
 
 - **Normal Vite build:** `npm install && npm run build` (Node.js 20+ and npm
-  access). Vite uses pinned `maplibre-gl@5.12.0` and bundles it.
+  access). Vite uses pinned `maplibre-gl@6.16.0` and bundles it.
 - **Offline portable build:** `node scripts/build-offline.mjs`, using the
-  precompiled MapLibre 5.12.0 assets under `third_party/maplibre/` and the
+  precompiled MapLibre 6.16.0 assets under `third_party/maplibre/` and the
   included production Vue 3 runtime. This creates a functionally equivalent
   **portable static distribution**, but it is **not a Vite-generated build**.
   It retains native browser ES modules for Settings code-splitting and includes
@@ -97,8 +109,8 @@ The source includes two build paths:
 
 Both paths write to `dist/`; publish only the `dist/` **contents**.
 Verify with `node scripts/verify-dist.mjs`, and run `npm test` for regressions.
-The offline build is self-contained; its precompiled MapLibre UMD bundle embeds
-its Web Worker. See `THIRD_PARTY_LICENSES.txt` in the deployable directory.
+The offline build is self-contained; its precompiled MapLibre ESM distribution includes
+its local module Web Worker. See `THIRD_PARTY_LICENSES.txt` in the deployable directory.
 
 ## Deployable files
 
@@ -120,7 +132,7 @@ storage as part of cleanup. Retain a separate copy of your backup.
 
 - IndexedDB database `verdant-garden-v2`, version `1`: unchanged.
 - ZIP backup format `verdant-garden-backup`, schema `2`: unchanged.
-- Service Worker cache: new `verdant-shell-v1.6.5-offline` in the provided
+- Service Worker cache: new `verdant-shell-v1.6.5-offline-security1` in the provided
   portable static build; does not modify browser databases.
 - Project title, taxonomy, GPS, journal, map, backup, restore, and photo
   optimization are preserved from v1.6.1.

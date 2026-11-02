@@ -9,7 +9,7 @@ const pkg = require('../package.json');
 assert.equal(pkg.version, '1.6.5');
 assert.match(html, /VERDANT · LOCAL FIRST · VERSION 1\.6\.5 · VUE 3/);
 assert.match(html, /<title>Verdant 1\.6\.5/);
-assert.equal(pkg.dependencies['maplibre-gl'], '5.12.0');
+assert.equal(pkg.dependencies['maplibre-gl'], '6.16.0');
 assert.match(entry, /from 'maplibre-gl'/);
 assert.match(entry, /maplibre-gl\/dist\/maplibre-gl\.css/);
 assert.match(entry, /window\.maplibregl\s*=/);

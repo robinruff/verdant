@@ -17,6 +17,15 @@ assert(!names.some(n=>/^(vue-v|backup-v|photos-v|settings-tools-v|fetch_maplibre
 const html=await readFile(join(root,'index.html'),'utf8');
 assert(!/vendor\/maplibre-gl|fetch_maplibre/.test(html),'manual map assets still required');
 const assets=names.includes('assets')? await readdir(join(root,'assets')) : [];
+// Both build paths must ship the separate MapLibre 6 worker locally.
+const portableMap=assets.find(n=>n.startsWith('maplibre-6.'));
+if(portableMap){
+  for(const file of ['maplibre-gl.mjs','maplibre-gl-worker.mjs']){
+    assert((await stat(join(root,'assets',portableMap,file))).size>0,'MapLibre module missing: '+file);
+  }
+}else{
+  assert(assets.some(n=>/^maplibre-gl-worker-.*\.mjs$/.test(n)),'MapLibre worker was not emitted by Vite');
+}
 assert(assets.some(n=>n.endsWith('.js')),'no bundled application javascript');
 const chunks=await Promise.all(assets.filter(n=>n.endsWith('.js')).map(n=>readFile(join(root,'assets',n),'utf8')));
 assert(chunks.some(c=>c.includes('maplibregl')||c.includes('maplibre')||c.includes('maplibre-gl')),'MapLibre was not included in JS bundles');

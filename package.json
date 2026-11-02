@@ -10,9 +10,9 @@
     "verify:dist": "node scripts/verify-dist.mjs"
   },
   "dependencies": {
-    "maplibre-gl": "5.12.0"
+    "maplibre-gl": "6.16.0"
   },
   "devDependencies": {
-    "vite": "6.3.0"
+    "vite": "6.4.5"
   }
 }
