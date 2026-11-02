@@ -10,10 +10,10 @@ const revision=createHash('sha256');
 for(const file of [...files].sort())revision.update(file).update(await readFile(join(root,file)));
 const buildId=revision.digest('hex').slice(0,12);
 // Match the versioned script URL in index.html even without a network connection.
-files.push('./photo-optimizer.js?v=1.6.5');
+files.push('./photo-optimizer.js?v=1.6.6');
 // Navigation-first update policy; immutable revisioned assets stay cache-first.
-const output=`/* Verdant 1.6.5: offline static shell, never touches IndexedDB. */
-const CACHE='verdant-shell-v1.6.5-${buildId}';
+const output=`/* Verdant 1.6.6: offline static shell, never touches IndexedDB. */
+const CACHE='verdant-shell-v1.6.6-${buildId}';
 const FILES=${JSON.stringify(files)};
 const OPTIONAL_VENDOR=[];
 self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(async c=>{

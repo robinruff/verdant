@@ -29,5 +29,5 @@ assert.match(app,/scheduleMapRecovery\('visible'\)/);
 assert.match(app,/scheduleMapRecovery\('pageshow'\)/);
 assert.match(app,/DB_VERSION = 1/);
 assert.match(app,/BACKUP_SCHEMA = 2/);
-assert.match(read('scripts/write-sw.mjs'),/verdant-shell-v1\.6\.5/);
+assert.match(read('scripts/write-sw.mjs'),/verdant-shell-v1\.6\.6/);
 console.log('PASS: v1.6 shared searchable tree, single species editor, timestamped journal thumbnails, safe map recovery, storage compatibility');

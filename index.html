@@ -11,7 +11,7 @@
   <link rel="icon" type="image/png" href="/icons/icon-192.png">
   <link rel="apple-touch-icon" href="/icons/icon-192.png">
   <link rel="stylesheet" href="./styles.css">
-  <title>Verdant 1.6.5 — Garden Inventory</title>
+  <title>Verdant 1.6.6 — Garden Inventory</title>
 </head>
 <body>
   <div id="app" v-cloak>
@@ -77,7 +77,7 @@
         <article class="settings-card"><div class="settings-icon">✺</div><h2>Pl@ntNet identification</h2><p>Search species and identify up to five photos online, with your own API key. Identification is optional; your inventory stays usable offline.</p><form id="apiForm"><label for="apiKey">Personal API key</label><div class="field-row"><input id="apiKey" type="password" placeholder="Paste your API key" autocomplete="off"><button class="btn btn-outline" type="submit">Save key</button></div></form><div class="settings-actions"><button class="btn btn-outline" data-action="test-api">Test connection & quota</button><button class="btn btn-quiet danger-text" data-action="remove-api-key">Remove key</button></div><div id="apiFeedback" class="inline-info">No key configured.</div><div class="small-links"><a href="https://my.plantnet.org/signup" target="_blank" rel="noopener">Create account ↗</a><a href="https://my.plantnet.org/settings/api-key" target="_blank" rel="noopener">API key settings ↗</a></div><p class="microcopy">Enable “expose my API key” and authorize this exact origin in Pl@ntNet's settings: <code id="currentOrigin"></code>. Your key is stored on this device, not in backups. Browser profile access can expose it.</p></article>
         <article class="settings-card"><div class="settings-icon">⌂</div><h2>Offline & storage</h2><p>This app caches its files to work without a server after the initial load. Photos and records live in IndexedDB. Safari may deny storage protection automatically; this does not block saving. Keep downloaded ZIP backups.</p><div class="settings-actions"><button class="btn btn-outline" data-action="persistent-storage">Request persistent storage</button></div><div id="storageInfo" class="inline-info">Checking storage…</div></article>
       <article class="settings-card reset-card"><div class="settings-icon">!</div><h2>Reset entire application</h2><p>Erase every plant, type, journal, map, photo, calibration, Pl@ntNet key and offline cache. This is irreversible. Uninstalling the home-screen icon remains a separate device action.</p><div class="settings-actions"><button class="btn btn-outline danger-text" data-action="reset-application">Erase everything…</button></div></article>
-      </div><footer class="footer-note">VERDANT · LOCAL FIRST · VERSION 1.6.5 · VUE 3</footer></section>
+      </div><footer class="footer-note">VERDANT · LOCAL FIRST · VERSION 1.6.6 · VUE 3</footer></section>
     </main>
   </div>
     <!-- v1.6.1: a single Vue-managed modal is shared by Map and Plants. -->
@@ -101,7 +101,7 @@
   <script src="/vendor/vue.global.prod.js"></script>
   <script src="/geotiff-local.js"></script>
   <script src="/zip-backup.js"></script>
-  <script src="/photo-optimizer.js?v=1.6.5"></script>
+  <script src="/photo-optimizer.js?v=1.6.6"></script>
   <script src="/taxonomy.js"></script>
   <script src="/localized-names.js"></script>
   <script src="/garden-title.js"></script>

@@ -2,7 +2,7 @@
 import {readdir,readFile} from 'node:fs/promises';
 import {resolve,join} from 'node:path';
 const root=resolve(new URL('../',import.meta.url).pathname,process.env.VERDANT_OUT_DIR||'dist');
-const assert = (condition,msg)=>{if(!condition)throw new Error('Incomplete v1.6.5 build: '+msg);};
+const assert = (condition,msg)=>{if(!condition)throw new Error('Incomplete v1.6.6 build: '+msg);};
 const names=await readdir(root);
 assert(names.includes('index.html'),'index.html is missing');
 assert(names.includes('sw.js'),'service worker is missing');
@@ -30,4 +30,4 @@ const chunks=await Promise.all(assets.filter(n=>n.endsWith('.js')).map(n=>readFi
 assert(chunks.some(c=>c.includes('maplibregl')||c.includes('maplibre')||c.includes('maplibre-gl')),'MapLibre was not included in JS bundles');
 const styles=await Promise.all(assets.filter(n=>n.endsWith('.css')).map(n=>readFile(join(root,'assets',n),'utf8')));
 assert(styles.some(css=>css.includes('maplibregl-')),'MapLibre CSS was not included');
-console.log('Verified v1.6.5 static build ('+assets.length+' hashed assets); no manual MapLibre setup.');
+console.log('Verified v1.6.6 static build ('+assets.length+' hashed assets); no manual MapLibre setup.');
