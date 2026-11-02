@@ -1,6 +1,20 @@
-/* Verdant 1.6.5 portable offline distribution */
-const CACHE='verdant-shell-v1.6.5-offline-security1';
-const FILES=["./THIRD_PARTY_LICENSES.txt","./assets/import-photos.js","./assets/maplibre-6.16.0/maplibre-gl-worker.mjs","./assets/maplibre-6.16.0/maplibre-gl.mjs","./assets/maplibre-gl.a90798a19530.css","./assets/settings/backup-tool.js","./assets/settings/disk-writer.js","./assets/settings/manager.js","./assets/settings/opfs-writer.worker.js","./assets/settings/photo-tool.js","./assets/src/import-photos.js","./assets/verdant-app.86b6d70dfecd.js","./assets/verdant-entry.77564c9086fa.js","./assets/verdant.6d97e91c31e3.css","./assets/vue-shell.6ee083c3e7bb.js","./assets/vue.c459ba7cc8db.js","./garden-title.js","./geotiff-local.js","./icons/icon-192.png","./icons/icon-512.png","./index.html","./localized-names.js","./manifest.webmanifest","./photo-optimizer.js","./photo-optimizer.js?v=1.6.5","./print/README.md","./print/auto-grid.typ","./print/cluster-tiles.typ","./print/geometry.typ","./print/map.typ","./print/printout.typ","./print/side-labels.typ","./print/tiles.typ","./taxonomy.js","./verdant-rescue.html","./zip-backup.js"];
-self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(FILES)).then(()=>self.skipWaiting())));
-self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('verdant-shell-')&&k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
-self.addEventListener('fetch',e=>{const r=e.request,u=new URL(r.url);if(r.method!=='GET'||u.origin!==self.location.origin)return;if(r.mode==='navigate'){e.respondWith(fetch(r).then(response=>{if(response.ok){const copy=response.clone();caches.open(CACHE).then(c=>c.put(r,copy));}return response;}).catch(async()=>await caches.match(r)||await caches.match('./index.html')||Response.error()));return;}e.respondWith(caches.match(r).then(c=>c||fetch(r)));});
+/* Verdant 1.6.5: offline static shell, never touches IndexedDB. */
+const CACHE='verdant-shell-v1.6.5-security1';
+const FILES=["./THIRD_PARTY_LICENSES.txt","./assets/app-P4NMweZi.js","./assets/backup-tool-BggDnQ0C.js","./assets/import-photos-D8kIJ24O.js","./assets/index-CVizBAPI.js","./assets/index-Qa6hJbKi.css","./assets/manager-BK5di4iG.js","./assets/maplibre-gl-worker-CMkqA50c.mjs","./assets/opfs-writer.worker-CM3sF1wR.js","./assets/photo-tool-Bw_Zssx7.js","./assets/preload-helper-Ct5FWWRu.js","./garden-title.js","./geotiff-local.js","./icons/icon-192.png","./icons/icon-512.png","./index.html","./localized-names.js","./manifest.webmanifest","./photo-optimizer.js","./print/README.md","./print/auto-grid.typ","./print/cluster-tiles.typ","./print/geometry.typ","./print/map.typ","./print/printout.typ","./print/side-labels.typ","./print/tiles.typ","./taxonomy.js","./vendor/vue.global.prod.js","./verdant-rescue.html","./zip-backup.js","./photo-optimizer.js?v=1.6.5"];
+const OPTIONAL_VENDOR=[];
+self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(async c=>{
+  await c.addAll(FILES);
+
+}).then(()=>self.skipWaiting())));
+self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(n=>n.startsWith('verdant-shell-')&&n!==CACHE).map(n=>caches.delete(n)))).then(()=>self.clients.claim())));
+self.addEventListener('fetch',e=>{
+  const req=e.request,url=new URL(req.url);
+  if(req.method!=='GET'||url.origin!==self.location.origin)return;
+  if(req.mode==='navigate'){
+    e.respondWith(fetch(req).then(r=>{if(r.ok){const c=r.clone();caches.open(CACHE).then(cache=>cache.put(req,c));}return r;}).catch(async()=>await caches.match(req)||await caches.match('./index.html')||Response.error()));return;
+  }
+  e.respondWith(caches.match(req).then(r=>r||fetch(req).then(response=>{
+    if(response.ok && OPTIONAL_VENDOR.some(file=>url.pathname.endsWith(file.slice(1)))){const copy=response.clone();caches.open(CACHE).then(cache=>cache.put(req,copy));}
+    return response;
+  })));
+});

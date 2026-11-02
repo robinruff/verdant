@@ -10,9 +10,10 @@
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" type="image/png" href="./icons/icon-192.png">
   <link rel="apple-touch-icon" href="./icons/icon-192.png">
-  <link rel="stylesheet" href="./assets/verdant.6d97e91c31e3.css">
-  <link rel="stylesheet" href="./assets/maplibre-gl.a90798a19530.css">
   <title>Verdant 1.6.5 — Garden Inventory</title>
+  <script type="module" crossorigin src="./assets/index-CVizBAPI.js"></script>
+  <link rel="modulepreload" crossorigin href="./assets/preload-helper-Ct5FWWRu.js">
+  <link rel="stylesheet" crossorigin href="./assets/index-Qa6hJbKi.css">
 </head>
 <body>
   <div id="app" v-cloak>
@@ -99,13 +100,12 @@
   <input type="file" id="mapFile" hidden accept="image/jpeg,image/png,image/webp"><input type="file" id="geoFile" hidden accept=".tif,.tiff,image/tiff,application/geotiff">
   <input type="file" id="backupFile" hidden accept=".zip,application/zip,.json,application/json">
   <div id="modalRoot"></div><div id="photoViewerRoot"></div><div id="toast" role="status" aria-live="polite"></div>
-  <script src="./assets/vue.c459ba7cc8db.js"></script>
+  <script src="./vendor/vue.global.prod.js"></script>
   <script src="./geotiff-local.js"></script>
   <script src="./zip-backup.js"></script>
   <script src="./photo-optimizer.js?v=1.6.5"></script>
   <script src="./taxonomy.js"></script>
   <script src="./localized-names.js"></script>
   <script src="./garden-title.js"></script>
-  <script type="module" src="./assets/verdant-entry.77564c9086fa.js"></script>
 </body>
 </html>

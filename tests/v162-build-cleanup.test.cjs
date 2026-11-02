@@ -17,7 +17,6 @@ assert.match(html, /src="\.\/src\/main\.js"/);
 assert.doesNotMatch(html, /fetch_maplibre|fetch-maplibre|vendor\/maplibre-gl/);
 assert.match(read('scripts/write-sw.mjs'), /verdant-shell-v1\.6\.5/);
 assert.match(read('scripts/write-sw.mjs'), /photo-optimizer\.js\?v=1\.6\.5/);
-assert.match(read('scripts/build-offline.mjs'), /photo-optimizer\.js\?v=1\.6\.5/);
 assert.match(html, /photo-optimizer\.js\?v=1\.6\.5/);
 assert.match(read('app.js'), /DB_NAME = 'verdant-garden-v2'/);
 assert.match(read('app.js'), /BACKUP_SCHEMA = 2/);

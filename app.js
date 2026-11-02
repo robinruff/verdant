@@ -4,7 +4,7 @@
 'use strict';
 
 const DB_NAME = 'verdant-garden-v2';
-const SHELL_CACHE = 'verdant-shell-v1.6.5-offline-security1';
+const SHELL_CACHE = 'verdant-shell-v1.6.5-security1';
 const DB_VERSION = 1;
 const BACKUP_FORMAT = 'verdant-garden-backup';
 const BACKUP_SCHEMA = 2;
@@ -1512,8 +1512,7 @@ async function registerOffline() {
     await navigator.serviceWorker.ready;
     const check=async()=>{
       const shell=await caches.open(SHELL_CACHE);
-      let index=await shell.match('./index.html');
-      if(!index){const regular=await caches.open('verdant-shell-v1.6.5-security1');index=await regular.match('./index.html');}
+      const index=await shell.match('./index.html');
       badge.innerHTML=index?'<span class="status-dot"></span>Offline ready':'<span class="status-dot"></span>Preparing offline access';badge.classList.toggle('ready',!!index);
     };await check();navigator.serviceWorker.addEventListener('controllerchange',check);
   }catch(err){badge.textContent='Offline cache failed — use local server';console.warn('Service worker setup:',err);}

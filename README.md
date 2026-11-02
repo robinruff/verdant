@@ -2,8 +2,8 @@
 
 MapLibre GL JS is pinned to **6.16.0** and Vite to **6.4.5** to address the
 reported npm advisories. Run `npm ci` to install the committed dependency lockfile.
-The checked-in portable distribution and vendored MapLibre assets have also
-been updated; both build paths ship the separate local MapLibre module worker.
+The Vite build bundles MapLibre and its separate local module worker from npm.
+The former vendored MapLibre copy and standalone offline builder have been removed.
 MapLibre 6 requires **WebGL2** and modern ES2022-capable browsers. Check map
 rendering on target phones before deployment. Browser data and backup schemas
 are unchanged. Service-worker caches use a new `security1` suffix to replace
@@ -96,21 +96,22 @@ and local map imagery. Export and verify a backup first. Use the same origin
 
 ## Building from source
 
-The source includes two build paths:
+Use Node.js 20+ and npm from the project directory:
 
-- **Normal Vite build:** `npm install && npm run build` (Node.js 20+ and npm
-  access). Vite uses pinned `maplibre-gl@6.16.0` and bundles it.
-- **Offline portable build:** `node scripts/build-offline.mjs`, using the
-  precompiled MapLibre 6.16.0 assets under `third_party/maplibre/` and the
-  included production Vue 3 runtime. This creates a functionally equivalent
-  **portable static distribution**, but it is **not a Vite-generated build**.
-  It retains native browser ES modules for Settings code-splitting and includes
-  revisioned main JS/CSS assets.
+```bash
+npm ci
+npm run build
+```
 
-Both paths write to `dist/`; publish only the `dist/` **contents**.
-Verify with `node scripts/verify-dist.mjs`, and run `npm test` for regressions.
-The offline build is self-contained; its precompiled MapLibre ESM distribution includes
-its local module Web Worker. See `THIRD_PARTY_LICENSES.txt` in the deployable directory.
+npm installs the locked dependencies, including MapLibre and Vite. The build
+bundles MapLibre's JavaScript, stylesheet, and worker into `dist/`; no manual
+MapLibre download is needed. Dependency installation needs registry access
+unless the packages are already cached. The deployed application remains
+self-contained and works offline through its service worker.
+
+Publish only the contents of `dist/`. Verify with `npm run verify:dist`,
+and run `npm test` for regressions. See `THIRD_PARTY_LICENSES.txt` in the
+deployable directory for the MapLibre license.
 
 ## Deployable files
 
@@ -119,7 +120,7 @@ JS and CSS, plus lazy Settings modules), the required local helper scripts,
 `icons/`, `manifest.webmanifest`, `sw.js`, `THIRD_PARTY_LICENSES.txt`, and
 `verdant-rescue.html` for independent emergency read-only recovery.
 
-Do **not** deploy `src/`, `scripts/`, `tests/`, `docs/`, `third_party/`, or
+Do **not** deploy `src/`, `scripts/`, `tests/`, `docs/`, or
 `node_modules/` from the source project.
 
 The previous `vue-v*.html`, old `backup-v*` / `photos-v*` pages, redundant
@@ -132,8 +133,8 @@ storage as part of cleanup. Retain a separate copy of your backup.
 
 - IndexedDB database `verdant-garden-v2`, version `1`: unchanged.
 - ZIP backup format `verdant-garden-backup`, schema `2`: unchanged.
-- Service Worker cache: new `verdant-shell-v1.6.5-offline-security1` in the provided
-  portable static build; does not modify browser databases.
+- Service Worker cache: new `verdant-shell-v1.6.5-security1` in the provided
+  Vite static build; does not modify browser databases.
 - Project title, taxonomy, GPS, journal, map, backup, restore, and photo
   optimization are preserved from v1.6.1.
 - Local Node regressions and offline distribution integrity checks passed.

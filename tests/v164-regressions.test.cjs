@@ -37,7 +37,7 @@ vm.runInContext(appSource,ctx);
   await vm.runInContext('clearStagedZips(false)',ctx);
   assert(!values.has('verdant-staged-zip'));
   assert.equal(vm.runInContext('BACKUP_SCHEMA',ctx),2);
-  assert.equal(vm.runInContext('SHELL_CACHE',ctx),'verdant-shell-v1.6.5-offline-security1');
+  assert.equal(vm.runInContext('SHELL_CACHE',ctx),'verdant-shell-v1.6.5-security1');
   assert.match(fs.readFileSync(path.join(root,'src/settings/backup-tool.js'),'utf8'),/VerdantPhotos\.settings\(/);
   assert.doesNotMatch(fs.readFileSync(path.join(root,'src/settings/backup-tool.js'),'utf8'),/VerdantPhotos\.backupSettings\(/);
   assert.doesNotMatch(appSource,/VerdantPhotos\.backupSettings\(/);
