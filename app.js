@@ -4,7 +4,7 @@
 'use strict';
 
 const DB_NAME = 'verdant-garden-v2';
-const SHELL_CACHE = 'verdant-shell-v1.6.5-security1';
+const SHELL_CACHE = 'verdant-shell-v1.6.5-';
 const DB_VERSION = 1;
 const BACKUP_FORMAT = 'verdant-garden-backup';
 const BACKUP_SCHEMA = 2;
@@ -428,7 +428,7 @@ function geoToPixel(lat,lon){
 function imageDimensions(){return {w:state.map?.width||0,h:state.map?.height||0};}
 // For an uncalibrated screenshot use provisional, local-to-app geographic
 // coordinates, solely to position the raster while choosing GPS references.
-const TEMP_CENTER={lat:36.6497421,lon:-5.2870430};
+const TEMP_CENTER={lat:0,lon:0};
 function temporaryGeo(x,y){
   const {w,h}=imageDimensions(),factor=0.6/EARTH_M_PER_DEG;
   return {lat:TEMP_CENTER.lat+(h/2-y)*factor,lon:TEMP_CENTER.lon+(x-w/2)*factor/Math.cos(TEMP_CENTER.lat*Math.PI/180)};
@@ -626,10 +626,7 @@ async function handleGeoTIFF(file){
   let result;
   try{result=await VerdantGeoTIFF.decode(file,pct=>{if(busy)busy.textContent=`Processing GeoTIFF ${pct}%`;});}
   finally{if(busy)busy.textContent='';}
-  const [centerLat,centerLon]=[36.6497421,-5.2870430];
-  const center=VerdantGeoTIFF.geoToPixel(result.geo,centerLat,centerLon);
-  // Never silently assume the user's garden is inside their uploaded imagery:
-  // custom GeoTIFFs can be outside the supplied default location.
+  const center={x:result.width/2,y:result.height/2};
   cancelPlacement();
   const imageId=await saveImage(result.blob,file.name.replace(/\.tiff?$/i,'.jpg'),'map');
   state.savedCamera=null;await saveSetting({id:'map',imageId,width:result.width,height:result.height,points:[],geo:result.geo,originalPixels:result.originalPixels,updatedAt:nowISO()});
@@ -1506,13 +1503,15 @@ async function updateStorageInfo() {
 }
 async function registerOffline() {
   const badge=$('#connectionBadge');
+  if(window.__VERDANT_DEV__){badge.textContent='Development · live reload';return;}
   if(!('serviceWorker' in navigator)){badge.textContent='Offline install unavailable';return;}
   try{
     await navigator.serviceWorker.register('./sw.js');
     await navigator.serviceWorker.ready;
     const check=async()=>{
-      const shell=await caches.open(SHELL_CACHE);
-      const index=await shell.match('./index.html');
+      const names=(await caches.keys()).filter(name=>name.startsWith(SHELL_CACHE));
+      const matches=await Promise.all(names.map(async name=>(await caches.open(name)).match('./index.html')));
+      const index=matches.find(Boolean);
       badge.innerHTML=index?'<span class="status-dot"></span>Offline ready':'<span class="status-dot"></span>Preparing offline access';badge.classList.toggle('ready',!!index);
     };await check();navigator.serviceWorker.addEventListener('controllerchange',check);
   }catch(err){badge.textContent='Offline cache failed — use local server';console.warn('Service worker setup:',err);}

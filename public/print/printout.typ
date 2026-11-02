@@ -14,7 +14,7 @@
 #let journal-photos = true   // true to add photos to the journal appendix
 #let include-removed = true  // false excludes physically removed plants
 #let report-language = "en"  // common-name preference: "en", "es", "de"
-#let editor-url = "https://verdant.robin-ruff-98.workers.dev" // where to edit/import the backup
+#let editor-url = "https://example.org/verdant/" // where to edit/import the backup
 #let tile-label-mode = "side-columns"  // "side-columns" or "badges" (original)
 #let tile-side-dot-diameter = 1.8 // mm for leader-line map dots
 #let map-layout = "auto"      // "auto", "single", "clustered", "fixed-grid"

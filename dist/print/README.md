@@ -29,7 +29,7 @@ images; without calibration the other record pages can still be generated.
 
 ## Open or edit the garden in Verdant
 
-**Editor:** https://verdant.robin-ruff-98.workers.dev
+**Editor:** https://example.org/verdant/
 
 Open that URL in a browser, go to **Back up & restore → Restore garden**, select
 this **original ZIP**, and follow the verification and confirmation steps.

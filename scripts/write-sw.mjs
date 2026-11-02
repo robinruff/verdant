@@ -1,15 +1,19 @@
-import {readdir,stat,writeFile} from 'node:fs/promises';
-import {join,relative} from 'node:path';
-const root=new URL('../dist/',import.meta.url).pathname;
+import {readdir,readFile,writeFile} from 'node:fs/promises';
+import {createHash} from 'node:crypto';
+import {resolve,join,relative} from 'node:path';
+const root=resolve(new URL('../',import.meta.url).pathname,process.env.VERDANT_OUT_DIR||'dist');
 async function walk(dir){let out=[];for(const ent of await readdir(dir,{withFileTypes:true})){
   const name=join(dir,ent.name);if(ent.isDirectory())out.push(...await walk(name));else if(!ent.name.endsWith('.map')&&!ent.name.startsWith('sw.'))out.push('./'+relative(root,name).replace(/\\/g,'/'));
 }return out;}
 const files=await walk(root);
+const revision=createHash('sha256');
+for(const file of [...files].sort())revision.update(file).update(await readFile(join(root,file)));
+const buildId=revision.digest('hex').slice(0,12);
 // Match the versioned script URL in index.html even without a network connection.
 files.push('./photo-optimizer.js?v=1.6.5');
 // Navigation-first update policy; immutable revisioned assets stay cache-first.
 const output=`/* Verdant 1.6.5: offline static shell, never touches IndexedDB. */
-const CACHE='verdant-shell-v1.6.5-security1';
+const CACHE='verdant-shell-v1.6.5-${buildId}';
 const FILES=${JSON.stringify(files)};
 const OPTIONAL_VENDOR=[];
 self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(async c=>{

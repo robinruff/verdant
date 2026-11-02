@@ -6,7 +6,7 @@ const elements=new Map();const el=key=>{if(!elements.has(key))elements.set(key,{
 const ctx=vm.createContext({console,Blob,URL,Date,Math,crypto:globalThis.crypto,setTimeout,clearTimeout,window:{},document:{querySelector:el,querySelectorAll:()=>[]}});
 vm.runInContext(source,ctx);
 vm.runInContext(`
- dbAll=async store=>{if(store==='images')throw Error('Eager photo loading forbidden');return ({plants:[{id:'plant1',geometry:pointGeometry(36.649,-5.287),plantTypeId:'olive',statuses:[{id:'s1',timestamp:nowISO(),imageIds:['photo1']}]}],plantTypes:[{id:'olive',nameEn:'Olive'}],settings:[]})[store]};
+ dbAll=async store=>{if(store==='images')throw Error('Eager photo loading forbidden');return ({plants:[{id:'plant1',geometry:pointGeometry(40.000,-3.000),plantTypeId:'olive',statuses:[{id:'s1',timestamp:nowISO(),imageIds:['photo1']}]}],plantTypes:[{id:'olive',nameEn:'Olive'}],settings:[]})[store]};
  dbKeys=async store=>{if(store!=='images')throw Error('Wrong keys store');return ['photo1']};
  migrateTaxonomy=async()=>0;renderAll=()=>{};ensureMapImage=()=>{};releasePhotos=()=>{};observePhotos=()=>{};
  state.db={};

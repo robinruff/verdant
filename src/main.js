@@ -11,4 +11,5 @@ window.maplibregl = maplibregl;
 mountGarden();
 // The legacy plain-JS controller still owns IndexedDB, MapLibre and data flows.
 // Load it only after MapLibre and the Vue shell are ready.
+window.__VERDANT_DEV__ = import.meta.env.DEV;
 await import('../app.js');

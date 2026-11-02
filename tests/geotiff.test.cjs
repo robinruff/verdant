@@ -5,7 +5,7 @@ const script=fs.readFileSync(__dirname+'/../public/geotiff-local.js','utf8');
 const ctx=vm.createContext({ArrayBuffer,Uint8Array,DataView,Math,Blob,console});
 vm.runInContext(script,ctx);
 const geo=ctx.VerdantGeoTIFF;
-const epsg=25830,lat=36.6497421,lon=-5.2870430;
+const epsg=25830,lat=40,lon=-3;
 const [x,y]=geo.forward(lat,lon,epsg);const roundtrip=geo.inverse(x,y,epsg);
 assert(Math.abs(roundtrip.lat-lat)<2e-7);assert(Math.abs(roundtrip.lon-lon)<2e-7);
 const fixture=fs.readFileSync(__dirname+'/fixtures/tiny-utm-lzw.tif');

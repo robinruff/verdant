@@ -6,7 +6,7 @@ const Z=context.globalThis.VerdantZip;
 (async()=>{
   const photos=[new Blob([Uint8Array.from({length:2097153},(_,i)=>(i*i)%256)],{type:'image/jpeg'}),new Blob([Uint8Array.from([0,1,2,3,4,0,255])],{type:'image/png'})];
   const records={format:'verdant-garden-backup',schemaVersion:2,exportedAt:new Date().toISOString(),data:{
-    plants:[{id:'p',geometry:{type:'Point',coordinates:[-5.287,36.649]},statuses:[{id:'s',timestamp:'2026-10-19T00:00:00Z',imageIds:['im1','im2']}]}],plantTypes:[],settings:[],
+    plants:[{id:'p',geometry:{type:'Point',coordinates:[-3.000,40.000]},statuses:[{id:'s',timestamp:'2026-10-19T00:00:00Z',imageIds:['im1','im2']}]}],plantTypes:[],settings:[],
     images:[{id:'im1',mimeType:'image/jpeg',path:'images/00001.bin'},{id:'im2',mimeType:'image/png',path:'images/00002.bin'}]}};
   let parts=[],calls=0;
   const output={async write(b){assert(b.byteLength<=256*1024+200);calls++;parts.push(new Uint8Array(b));},async close(){},async abort(){throw new Error('should not abort');}};

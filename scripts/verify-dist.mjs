@@ -1,7 +1,7 @@
 // Fail the release build rather than ship a ZIP with missing map assets.
 import {readdir,readFile} from 'node:fs/promises';
-import {join} from 'node:path';
-const root = new URL('../dist/', import.meta.url).pathname;
+import {resolve,join} from 'node:path';
+const root=resolve(new URL('../',import.meta.url).pathname,process.env.VERDANT_OUT_DIR||'dist');
 const assert = (condition,msg)=>{if(!condition)throw new Error('Incomplete v1.6.5 build: '+msg);};
 const names=await readdir(root);
 assert(names.includes('index.html'),'index.html is missing');
@@ -12,7 +12,13 @@ for(const filename of ['printout.typ','map.typ','geometry.typ','tiles.typ','side
   const body=await readFile(join(root,'print',filename));
   assert(body.length>0,'print template missing or empty: '+filename);
 }
-assert(names.includes('THIRD_PARTY_LICENSES.txt'),'MapLibre license is missing');
+assert(names.includes('LICENSE'),'Verdant license is missing');
+assert(names.includes('THIRD_PARTY_LICENSES.txt'),'Third-party notices are missing');
+const notices=await readFile(join(root,'THIRD_PARTY_LICENSES.txt'),'utf8');
+for(const component of ['maplibre-gl 6.16.0','Vue 3.5.13','murmurhash-js 1.0.0','vite 6.4.5']){
+  assert(notices.includes(component),'Missing third-party notice: '+component);
+}
+assert((await readFile(join(root,'LICENSE'),'utf8')).includes('Verdant contributors'),'Verdant MIT copyright is missing');
 assert(!names.some(n=>/^(vue-v|backup-v|photos-v|settings-tools-v|fetch_maplibre|fetch-maplibre)/.test(n)),'legacy page or fetch script was deployed');
 const html=await readFile(join(root,'index.html'),'utf8');
 assert(!/vendor\/maplibre-gl|fetch_maplibre/.test(html),'manual map assets still required');
