@@ -1,0 +1,230 @@
+{
+  "format": "verdant-garden-backup",
+  "schemaVersion": 2,
+  "exportedAt": "2026-10-29T09:12:00.000Z",
+  "data": {
+    "plants": [
+      {
+        "id": "p0001",
+        "plantTypeId": "olive",
+        "nickname": "Near entrance",
+        "geometry": {
+          "type": "Point",
+          "coordinates": [
+            -5.298,
+            36.658449999999995
+          ]
+        },
+        "statuses": [
+          {
+            "id": "j1-1",
+            "timestamp": "2026-05-11T08:30:00.000Z",
+            "note": "Healthy at spring inspection.",
+            "alive": true
+          },
+          {
+            "id": "j1-2",
+            "timestamp": "2026-10-22T13:10:00.000Z",
+            "note": "Pruned lightly; monitor new shoots.",
+            "imageIds": [
+              "photo-one"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "p0002",
+        "plantTypeId": "fig",
+        "nickname": "Along pathway",
+        "geometry": {
+          "type": "Point",
+          "coordinates": [
+            -5.2959000000000005,
+            36.65754999999999
+          ]
+        },
+        "statuses": [
+          {
+            "id": "j2-1",
+            "timestamp": "2026-05-11T08:30:00.000Z",
+            "note": "Healthy at spring inspection.",
+            "alive": true
+          }
+        ]
+      },
+      {
+        "id": "p0003",
+        "plantTypeId": "almond",
+        "nickname": "Old almond",
+        "geometry": {
+          "type": "Point",
+          "coordinates": [
+            -5.2938,
+            36.65815
+          ]
+        },
+        "statuses": [
+          {
+            "id": "j3-1",
+            "timestamp": "2026-05-11T08:30:00.000Z",
+            "note": "Healthy at spring inspection.",
+            "alive": true
+          },
+          {
+            "id": "j3-2",
+            "timestamp": "2026-06-12T10:00:00.000Z",
+            "note": "Removed after disease.",
+            "removed": true,
+            "alive": false
+          }
+        ]
+      },
+      {
+        "id": "p0004",
+        "plantTypeId": "unknown",
+        "nickname": "Upper bank",
+        "geometry": {
+          "type": "Point",
+          "coordinates": [
+            -5.2918,
+            36.657349999999994
+          ]
+        },
+        "statuses": [
+          {
+            "id": "j4-1",
+            "timestamp": "2026-05-11T08:30:00.000Z",
+            "note": "Healthy at spring inspection.",
+            "alive": true
+          }
+        ]
+      },
+      {
+        "id": "p0005",
+        "plantTypeId": "olive",
+        "nickname": "South olive",
+        "geometry": {
+          "type": "Point",
+          "coordinates": [
+            -5.2901,
+            36.65815
+          ]
+        },
+        "statuses": [
+          {
+            "id": "j5-1",
+            "timestamp": "2026-05-11T08:30:00.000Z",
+            "note": "Healthy at spring inspection.",
+            "alive": true
+          }
+        ]
+      },
+      {
+        "id": "p0006",
+        "plantTypeId": "fig",
+        "nickname": "Fig beside pond",
+        "geometry": {
+          "type": "Point",
+          "coordinates": [
+            -5.293,
+            36.654349999999994
+          ]
+        },
+        "statuses": [
+          {
+            "id": "j6-1",
+            "timestamp": "2026-05-11T08:30:00.000Z",
+            "note": "Healthy at spring inspection.",
+            "alive": true
+          }
+        ]
+      }
+    ],
+    "plantTypes": [
+      {
+        "id": "olive",
+        "scientificName": "Olea europaea",
+        "species": "Olea europaea",
+        "family": "Oleaceae",
+        "genus": "Olea",
+        "nameEn": "Olive",
+        "nameEs": "Olivo",
+        "nameDe": "Olivenbaum",
+        "color": "#34734b",
+        "links": []
+      },
+      {
+        "id": "fig",
+        "scientificName": "Ficus carica",
+        "species": "Ficus carica",
+        "family": "Moraceae",
+        "genus": "Ficus",
+        "nameEn": "Fig",
+        "nameEs": "Higuera",
+        "nameDe": "Feige",
+        "color": "#9e8742",
+        "links": []
+      },
+      {
+        "id": "almond",
+        "scientificName": "Prunus dulcis",
+        "species": "Prunus dulcis",
+        "family": "Rosaceae",
+        "genus": "Prunus",
+        "nameEn": "Almond",
+        "nameEs": "Almendro",
+        "nameDe": "Mandelbaum",
+        "color": "#ba7f8e",
+        "links": []
+      },
+      {
+        "id": "unknown",
+        "scientificName": "Quercus suber",
+        "species": "Quercus suber",
+        "family": "",
+        "genus": "",
+        "nameEn": "",
+        "nameEs": "",
+        "nameDe": "",
+        "color": "#67593b",
+        "links": []
+      }
+    ],
+    "settings": [
+      {
+        "id": "gardenTitle",
+        "value": "Sample Mediterranean Garden"
+      },
+      {
+        "id": "map",
+        "imageId": "map-background",
+        "width": 1400,
+        "height": 760,
+        "points": [],
+        "geo": {
+          "epsg": 4326,
+          "x0": -5.301,
+          "y0": 36.66,
+          "dx": 1e-05,
+          "dy": -1e-05
+        }
+      }
+    ],
+    "images": [
+      {
+        "id": "map-background",
+        "path": "images/00001.bin",
+        "name": "illustrated-map.jpg",
+        "mimeType": "image/jpeg",
+        "createdAt": "2026-05-11T00:00:00.000Z"
+      },
+      {
+        "id": "photo-one",
+        "path": "images/00002.bin",
+        "name": "olive-photo.jpg",
+        "mimeType": "image/jpeg",
+        "createdAt": "2026-10-22T13:10:00.000Z"
+      }
+    ]
+  }
+}

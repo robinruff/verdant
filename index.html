@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#153d31">
+  <meta name="description" content="Your garden, mapped and remembered. A private, offline-first plant inventory.">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" type="image/png" href="/icons/icon-192.png">
+  <link rel="apple-touch-icon" href="/icons/icon-192.png">
+  <link rel="stylesheet" href="./styles.css">
+  <title>Verdant 1.6.5 — Garden Inventory</title>
+</head>
+<body>
+  <div id="app" v-cloak>
+  <div class="app-shell" data-framework="vue3">
+    <header class="topbar">
+      <div class="brand"><span class="brand-mark" aria-hidden="true">✳</span><span><strong class="garden-display-title" :title="gardenTitle">{{ gardenTitle }}</strong><small class="brand-app-name">verdant<span class="brand-period">.</span></small></span></div>
+      <div class="header-right"><span id="connectionBadge" class="connection"><span class="status-dot"></span>Checking offline access</span><button class="icon-button help-button" data-action="help" aria-label="Help">?</button></div>
+    </header>
+    <nav class="main-tabs" aria-label="Main navigation">
+      <button class="tab" :class="{ active: tab === 'map' }" :aria-current="tab === 'map' ? 'page' : 'false'" data-tab="map"><span>▦</span> Map</button>
+      <button class="tab" :class="{ active: tab === 'plants' }" :aria-current="tab === 'plants' ? 'page' : 'false'" data-tab="plants"><span>♧</span> Plants <span class="tab-count" id="navPlantCount">{{ plantCount }}</span></button>
+      <button class="tab" :class="{ active: tab === 'types' }" :aria-current="tab === 'types' ? 'page' : 'false'" data-tab="types"><span>❀</span> Plant types</button>
+      <button class="tab" :class="{ active: tab === 'settings' }" :aria-current="tab === 'settings' ? 'page' : 'false'" data-tab="settings"><span>⚙</span> Settings</button>
+    </nav>
+    <main>
+      <div v-if="tab !== 'settings'" class="garden-workspace">
+      <section id="page-map" class="page" :class="{ active: tab === 'map' }" aria-label="Garden map">
+        <div class="map-floating-toolbar" aria-label="Map tools">
+          <details class="filter-menu" id="mapFilterMenu"><summary class="btn btn-outline">☷ Filters <span id="mapFilterIndicator" class="filter-indicator"></span></summary>
+            <div class="filter-panel"><div class="taxonomy-filter-sets"><button type="button" class="btn btn-outline taxonomy-open-button" @click="openTaxonomyModal('filter')" aria-haspopup="dialog" aria-controls="taxonomyModal">♧ Plant types <span class="taxonomy-button-count">{{ !taxonFilterActive ? 'All' : selectedTaxonIds.length ? selectedTaxonIds.length + ' selected' : 'None' }}</span></button></div><label>Life status<select data-filter-control="life" aria-label="Filter map by life status"><option value="all">Alive and dead</option><option value="alive">Alive only</option><option value="dead">Dead only</option></select></label><label>Removed plants<select data-filter-control="removed" aria-label="Filter map by removed status"><option value="hide">Hide removed</option><option value="show">Include removed</option><option value="only">Removed only</option></select></label><button class="btn btn-quiet btn-small" data-action="reset-filters">Clear filters</button></div>
+          </details>
+          <button type="button" class="btn btn-outline type-filter-shortcut hidden" id="clearTypeShortcut" data-action="clear-type-filter" title="Clear plant type filter"></button>
+          <details class="map-tools-menu" id="mapToolsMenu"><summary class="btn btn-outline">⋯ Map</summary><div class="map-tools-panel"><button class="btn btn-outline" data-action="upload-geotiff">Import GeoTIFF</button><button class="btn btn-outline" data-action="upload-map">Import screenshot</button><button class="btn btn-outline" data-action="open-calibration">Screenshot calibration</button><p class="hint">You can also drag, pinch-to-zoom and twist with two fingers. Calibration is needed only for screenshots.</p></div></details>
+          <button class="btn btn-outline gps-button" data-action="toggle-location" id="locationButton" title="Start live GPS tracking" aria-pressed="false">◎ Locate</button>
+          <button class="btn btn-outline gps-button gps-follow hidden" data-action="follow-location" id="followLocationButton" title="Center on my GPS position" aria-pressed="false">↗ Follow</button>
+          <span id="gpsStatus" class="gps-status hidden" role="status" aria-live="polite"></span>
+        </div>
+        <div class="map-frame" id="mapFrame">
+          <div class="map-viewport" :class="{ 'no-map': !mapPresent }" id="mapViewport" role="region" aria-label="Interactive garden map"><div id="mapCanvas" class="maplibre-surface"></div><div id="mapLibraryError" class="map-lib-error hidden" role="alert">Map could not start. Try reloading Verdant.</div>
+            <div id="mapEmpty" class="map-empty" :class="{hidden: mapPresent}"><div class="empty-decoration">✳</div><div class="empty-map-icon">▧</div><h2>Every garden has a story.</h2><p>Import an aerial GeoTIFF with coordinates already included, or use a screenshot with manual calibration.</p><button class="btn btn-primary" data-action="upload-geotiff">↑ Import GeoTIFF</button><button class="btn btn-outline" data-action="upload-map">Use a screenshot</button><small>Cropped GeoTIFF (recommended) · JPG/PNG/WebP (manual calibration)</small></div>
+          </div>
+          <div class="map-controls v14-map-controls" aria-label="Navigation controls"><button data-action="zoom-in" title="Zoom in" aria-label="Zoom in">+</button><button data-action="zoom-out" title="Zoom out" aria-label="Zoom out">−</button><button data-action="zoom-fit" title="Show whole garden" aria-label="Fit map">⤢</button><button data-action="rotate-reset" title="North up" aria-label="Reset north">↑N</button></div>
+          <div id="crosshair" class="crosshair hidden" aria-hidden="true"><span></span></div>
+          <div id="mapInstruction" class="map-instruction hidden"></div>
+          <div id="mapBottom" class="map-bottom"><button class="btn btn-primary map-add" data-action="add-marker">+ Add plant</button></div>
+          <div id="placementBar" class="placement-bar hidden"><button class="btn btn-light" data-action="cancel-placement">Cancel</button><div><strong id="placementTitle">Position the crosshair</strong><small>Drag or pinch the map underneath</small></div><button class="btn btn-primary" data-action="confirm-placement">Use this spot →</button></div>
+        </div>
+        <div class="visually-hidden" id="mapLegend"></div>
+      </section>
+      <section id="page-plants" class="page" :class="{ active: tab === 'plants' }" aria-label="Plant inventory"><div class="section-heading"><div><p class="eyebrow">THE COLLECTION</p><h1>All plants<span class="headline-leaf">.</span></h1><p class="muted">A home for every tree, shrub and little green thing.</p></div><button class="btn btn-primary" data-action="add-marker">+ New plant</button></div><div class="list-toolbar"><input id="plantSearch" class="search" type="search" placeholder="Search plant names and species…" aria-label="Search plants"><div class="inventory-filters"><div class="taxonomy-filter-sets"><button type="button" class="btn btn-outline taxonomy-open-button" @click="openTaxonomyModal('filter')" aria-haspopup="dialog" aria-controls="taxonomyModal">♧ Plant types <span class="taxonomy-button-count">{{ !taxonFilterActive ? 'All' : selectedTaxonIds.length ? selectedTaxonIds.length + ' selected' : 'None' }}</span></button></div><label>Status<select data-filter-control="life" aria-label="Filter list by life status"><option value="all">Alive and dead</option><option value="alive">Alive only</option><option value="dead">Dead only</option></select></label><label>Removed<select data-filter-control="removed" aria-label="Filter list by removed status"><option value="hide">Hidden</option><option value="show">Included</option><option value="only">Only removed</option></select></label><button class="btn btn-quiet btn-small" data-action="reset-filters">Reset</button></div></div><div id="plantList" class="plant-grid">
+          <plant-card v-for="card in plantCards" :key="card.id" :card="card"></plant-card>
+          <div v-if="!plantCards.length" class="empty-list"><div class="big">✳</div><h3>{{ plantCount ? 'No matching plants' : 'Your plant collection starts here.' }}</h3><p>{{ plantCount ? 'Try another search or filter.' : 'Calibrate the garden map, then add your first plant.' }}</p><button class="btn btn-primary" data-action="add-marker">+ Add a plant</button></div>
+        </div></section>
+      <section id="page-types" class="page" :class="{ active: tab === 'types' }" aria-label="Plant types"><div class="section-heading"><div><p class="eyebrow">SHARED LIBRARY</p><h1>Plant types<span class="headline-leaf">.</span></h1><p class="muted">Create manually or search Pl@ntNet by scientific name.</p></div><button class="btn btn-primary" data-action="add-type">+ New type</button></div><div class="list-toolbar"><input id="typeSearch" class="search" type="search" placeholder="Find a species or common name…" aria-label="Search plant types"></div><div id="typeList" class="type-grid">
+          <plant-type-card v-for="card in typeCards" :key="card.id" :card="card"></plant-type-card>
+          <div v-if="!typeCards.length" class="empty-list"><div class="big">❀</div><h3>{{ typeCount ? 'No matching types' : 'Build your plant library.' }}</h3><p>{{ typeCount ? 'Try a different name.' : 'Add a species once and reuse it whenever you plant another.' }}</p><button class="btn btn-primary" data-action="add-type">+ New plant type</button></div>
+        </div></section>
+      </div>
+      <section id="page-settings" class="page" :class="{ active: tab === 'settings' }" aria-label="Settings"><div class="section-heading"><div><p class="eyebrow">YOUR GARDEN, YOUR DATA</p><h1>Settings<span class="headline-leaf">.</span></h1><p class="muted">Nothing here needs an account or a cloud.</p></div></div><div v-if="managementTool" class="management-view"><button type="button" class="btn btn-quiet management-back" @click="closeManagement">← Back to Settings</button><div id="settingsManagementRoot"></div></div><div v-show="!managementTool" class="settings-grid">
+        <article class="settings-card garden-title-card"><div class="settings-icon">✎</div><h2>Garden name</h2><p>Give this garden a name. It appears in the header and is included in new ZIP backups. This does not rename the app, origin, or local database.</p><form id="gardenTitleForm"><label for="gardenTitleInput">Project / garden title</label><div class="garden-title-controls"><input id="gardenTitleInput" name="gardenTitle" type="text" minlength="1" maxlength="100" required autocomplete="off" placeholder="My garden"><button class="btn btn-primary" type="submit">Save title</button></div></form><p class="microcopy">The app is still Verdant; only your garden’s display name changes.</p></article>
+        <article class="settings-card"><div class="settings-icon">◫</div><h2>Map & calibration</h2><p>Import a cropped, georeferenced GeoTIFF (EPSG:25830 recommended), or keep the manual screenshot workflow. Marker coordinates never change when replacing a map.</p><div class="settings-actions"><button class="btn btn-primary" data-action="upload-geotiff">Import GeoTIFF</button><button class="btn btn-outline" data-action="upload-map">Upload screenshot</button><button class="btn btn-outline" data-action="open-calibration">Screenshot reference points</button></div><div id="settingsMapInfo" class="inline-info"></div></article>
+        <article class="settings-card settings-highlight"><div class="settings-icon">↧</div><h2>Keep a safe copy</h2><p>Browser storage can be removed by your device. Create a ZIP backup with separate photos and map image. Backup runs within Settings while the garden map and gallery are unloaded.</p><div class="settings-actions"><button class="btn btn-primary" data-action="export">Back up garden</button><button class="btn btn-outline" data-action="import">Restore garden</button></div><div id="backupInfo" class="inline-info">The staged ZIP is not a safe backup until you download and verify it. Restore replaces local garden data; your API key stays on this device.</div></article>
+        <article class="settings-card"><div class="settings-icon">▣</div><h2>Photo optimization</h2>
+          <p>Compress <strong>new journal photos</strong> locally before saving them. The original photo is used for identification first. Your aerial map is never compressed.</p>
+          <form id="photoOptimizationForm"><div class="photo-setting-fields">
+            <label>Target size (KB)<input name="targetKB" type="number" min="50" max="10000" step="1" value="300" required></label>
+            <label>Maximum longest edge (px)<input name="maxDimension" type="number" min="480" max="8000" step="1" value="1600" required></label>
+            <label>Format<select name="format"><option value="image/jpeg">JPEG</option><option value="image/webp">WebP</option></select></label>
+          </div><div class="settings-actions"><button class="btn btn-primary" type="submit">Save photo settings</button>
+            <button class="btn btn-outline" type="button" data-action="optimize-photos">Optimize existing photos…</button></div></form>
+          <p class="microcopy">Targets are approximate. Already-small photos stay unchanged. Bulk optimization runs in Settings and requires a verified backup because reducing image quality cannot be undone.</p>
+        </article>
+        <article class="settings-card"><div class="settings-icon">✺</div><h2>Pl@ntNet identification</h2><p>Search species and identify up to five photos online, with your own API key. Identification is optional; your inventory stays usable offline.</p><form id="apiForm"><label for="apiKey">Personal API key</label><div class="field-row"><input id="apiKey" type="password" placeholder="Paste your API key" autocomplete="off"><button class="btn btn-outline" type="submit">Save key</button></div></form><div class="settings-actions"><button class="btn btn-outline" data-action="test-api">Test connection & quota</button><button class="btn btn-quiet danger-text" data-action="remove-api-key">Remove key</button></div><div id="apiFeedback" class="inline-info">No key configured.</div><div class="small-links"><a href="https://my.plantnet.org/signup" target="_blank" rel="noopener">Create account ↗</a><a href="https://my.plantnet.org/settings/api-key" target="_blank" rel="noopener">API key settings ↗</a></div><p class="microcopy">Enable “expose my API key” and authorize this exact origin in Pl@ntNet's settings: <code id="currentOrigin"></code>. Your key is stored on this device, not in backups. Browser profile access can expose it.</p></article>
+        <article class="settings-card"><div class="settings-icon">⌂</div><h2>Offline & storage</h2><p>This app caches its files to work without a server after the initial load. Photos and records live in IndexedDB. Safari may deny storage protection automatically; this does not block saving. Keep downloaded ZIP backups.</p><div class="settings-actions"><button class="btn btn-outline" data-action="persistent-storage">Request persistent storage</button></div><div id="storageInfo" class="inline-info">Checking storage…</div></article>
+      <article class="settings-card reset-card"><div class="settings-icon">!</div><h2>Reset entire application</h2><p>Erase every plant, type, journal, map, photo, calibration, Pl@ntNet key and offline cache. This is irreversible. Uninstalling the home-screen icon remains a separate device action.</p><div class="settings-actions"><button class="btn btn-outline danger-text" data-action="reset-application">Erase everything…</button></div></article>
+      </div><footer class="footer-note">VERDANT · LOCAL FIRST · VERSION 1.6.5 · VUE 3</footer></section>
+    </main>
+  </div>
+    <!-- v1.6.1: a single Vue-managed modal is shared by Map and Plants. -->
+    <div v-if="taxonModalOpen" class="taxonomy-modal-backdrop" @click.self="cancelTaxonomyModal" @keydown="onTaxonomyModalKeydown">
+      <section id="taxonomyModal" class="taxonomy-dialog" role="dialog" aria-modal="true" aria-labelledby="taxonomyModalTitle" aria-describedby="taxonomyModalDescription">
+        <header class="taxonomy-dialog-header">
+          <div><p class="eyebrow">{{taxonMode==='plant'?'SELECT SPECIES':'FILTER THE GARDEN'}}</p><h2 id="taxonomyModalTitle">{{taxonMode==='plant'?'Choose plant species':'Plant types'}}</h2><p id="taxonomyModalDescription">{{taxonMode==='plant'?'Choose one species, or leave the plant unassigned.':'Select families, genera or individual species.'}}</p></div>
+          <button type="button" id="taxonomyModalClose" class="taxonomy-dialog-close" aria-label="Close without applying" @click="cancelTaxonomyModal">×</button>
+        </header>
+        <taxonomy-tree-filter :tree="taxonTree" :selected="taxonDraft" :active="taxonDraftActive" :mode="taxonMode" @selection-change="onTaxonomyChange" @reset-filter="onTaxonomyReset"></taxonomy-tree-filter>
+        <footer class="taxonomy-dialog-footer">
+          <span class="taxonomy-dialog-status" aria-live="polite">{{taxonMode==='plant'?(taxonDraft.length?'One species selected':'No species selected'):(!taxonDraftActive?'Showing all types':taxonDraft.length?taxonDraft.length+' selected':'No types selected')}}</span>
+          <div class="taxonomy-dialog-actions"><button type="button" class="btn btn-outline" @click="cancelTaxonomyModal">Cancel</button><button type="button" class="btn btn-primary" @click="applyTaxonomyModal">{{taxonMode==='plant'?'Use species':'Apply filters'}}</button></div>
+        </footer>
+      </section>
+    </div>
+  </div>
+  <input type="file" id="mapFile" hidden accept="image/jpeg,image/png,image/webp"><input type="file" id="geoFile" hidden accept=".tif,.tiff,image/tiff,application/geotiff">
+  <input type="file" id="backupFile" hidden accept=".zip,application/zip,.json,application/json">
+  <div id="modalRoot"></div><div id="photoViewerRoot"></div><div id="toast" role="status" aria-live="polite"></div>
+  <script src="/vendor/vue.global.prod.js"></script>
+  <script src="/geotiff-local.js"></script>
+  <script src="/zip-backup.js"></script>
+  <script src="/photo-optimizer.js?v=1.6.5"></script>
+  <script src="/taxonomy.js"></script>
+  <script src="/localized-names.js"></script>
+  <script src="/garden-title.js"></script>
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>
