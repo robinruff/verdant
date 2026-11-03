@@ -1,8 +1,11 @@
-# Verdant
+<p align="center">
+  <img src="public/icons/verdant.svg" width="80" height="80" alt="Verdant sprout logo">
+</p>
+<h1 align="center">Verdant</h1>
+<p align="center">An offline-first garden journal to map your plants, collect photos, and watch your garden grow.</p>
 
-An offline-first garden inventory PWA. Map plants, keep photo journals, organize
-species, and export ZIP backups with printable reports. Built with Vue 3,
-MapLibre and IndexedDB; no backend required.
+Map plants, keep photo journals, organize species, and export ZIP backups with
+printable reports. Built with Vue 3, MapLibre and IndexedDB; no backend required.
 
 Garden data stays in your browser. Optional Pl@ntNet identification requires
 internet access and your own API key, which is never included in backups.
