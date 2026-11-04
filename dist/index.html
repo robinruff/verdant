@@ -12,17 +12,17 @@
   <link rel="icon" type="image/svg+xml" href="./icons/verdant.svg">
   <link rel="apple-touch-icon" href="./icons/icon-192.png">
   <title>Verdant 1.6.7 — Garden Inventory</title>
-  <script type="module" crossorigin src="./assets/index-DkBUomcD.js"></script>
+  <script type="module" crossorigin src="./assets/index-BimxWtk5.js"></script>
   <link rel="modulepreload" crossorigin href="./assets/preload-helper-Ct5FWWRu.js">
-  <link rel="modulepreload" crossorigin href="./assets/task-modal-20aDIwvf.js">
-  <link rel="stylesheet" crossorigin href="./assets/index-D71ttHbc.css">
+  <link rel="modulepreload" crossorigin href="./assets/task-modal-BLmwrXyO.js">
+  <link rel="stylesheet" crossorigin href="./assets/index-D5Ucxj4U.css">
 </head>
 <body>
   <div id="app" v-cloak>
   <div class="app-shell" data-framework="vue3">
     <header class="topbar">
       <div class="brand"><img class="brand-mark" src="./icons/verdant.svg" width="32" height="32" alt="" aria-hidden="true"><span><strong class="garden-display-title" :title="gardenTitle">{{ gardenTitle }}</strong><small class="brand-app-name">verdant<span class="brand-period">.</span></small></span></div>
-      <div class="header-right"><span id="connectionBadge" class="connection"><span class="status-dot"></span>Checking offline access</span><button class="icon-button help-button" data-action="help" aria-label="Help">?</button></div>
+      <div class="header-right"><span id="connectionBadge" class="connection"><span class="status-dot"></span>Checking offline access</span><button type="button" class="icon-button install-button" data-action="install-app" aria-label="Install Verdant" title="Install Verdant" aria-haspopup="dialog"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m-4-4 4 4 4-4M4 16v5h16v-5"/></svg></button><button class="icon-button help-button" data-action="help" aria-label="Help">?</button></div>
     </header>
     <nav class="main-tabs" aria-label="Main navigation">
       <button class="tab" :class="{ active: tab === 'map' }" :aria-current="tab === 'map' ? 'page' : 'false'" data-tab="map"><span>▦</span> Map</button>

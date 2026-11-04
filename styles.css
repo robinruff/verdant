@@ -414,3 +414,15 @@ body.taxonomy-dialog-open{overflow:hidden}
 .backup-more{margin-top:16px;border-top:1px solid var(--line);padding-top:12px}
 .backup-more summary{cursor:pointer;color:var(--forest);font-size:12px;font-weight:700}
 .backup-more .microcopy{margin:10px 0}
+
+/* Native modal contains focus and supports Escape. */
+.install-button[hidden]{display:none}
+.install-dialog{width:min(480px,calc(100% - 24px));max-height:90dvh;overflow:auto;border:1px solid var(--line);border-radius:18px;padding:24px;color:var(--ink);background:var(--paper);box-shadow:var(--shadow)}
+.install-dialog::backdrop{background:#10271c88}
+.install-dialog p,.install-dialog li{font-size:14px;line-height:1.6}
+.install-dialog li{margin-bottom:10px}
+.install-dialog form{display:flex;justify-content:flex-end}
+@media(max-width:400px){.header-right{gap:6px}.header-right .connection{max-width:77px;font-size:9px}.install-button{padding:7px 9px}}
+
+.install-button{display:inline-grid;place-items:center;flex-shrink:0;padding:0}
+.install-actions{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}

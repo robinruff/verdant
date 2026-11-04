@@ -42,6 +42,33 @@ must be an HTTP(S) URL without credentials, query or fragment. Pass it explicitl
 **When updating, keep the same origin and never clear site storage. Export and
 verify a ZIP backup first.**
 
+## Installation
+
+Choose the **Install Verdant** icon beside Help to open the browser’s installation prompt when
+available, or see installation steps for your browser and device. The button is
+hidden when Verdant detects that it is running as an installed app. Installation
+detection is limited; the browser menu may still offer installation.
+
+On the first visit, Verdant offers installation help once. Choosing **No thanks**
+(or Escape) remembers the dismissal in this browser. **Show me how** opens the
+same installation flow as the icon; the icon remains available afterward.
+A full reset also clears this choice, so the offer appears when you reopen Verdant.
+
+Garden data stays in its browser. Export a backup before switching browsers,
+then restore it in the new browser.
+
+## Full reset
+
+Choose the erase action in Settings and type **RESET**. Verdant closes its
+garden and management tools, deletes its stored data, then reloads automatically
+into a new garden.
+
+Reset deletes both current and legacy garden databases, local settings and API
+key, the installation choice, temporary ZIPs, and Verdant’s offline cache and
+service worker. Downloaded backups are unaffected. If another window blocks
+deletion, close other Verdant tabs, installed-app windows and rescue pages.
+Errors stay visible rather than silently reloading after an incomplete reset.
+
 ## Backups
 
 Use the **Back up & restore** card directly in **Settings** to export or restore a garden. Backups include

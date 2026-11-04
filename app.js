@@ -107,7 +107,15 @@ function openDB() {
       for (const store of STORES) if (!db.objectStoreNames.contains(store)) db.createObjectStore(store,{keyPath:'id'});
       // In future versions, add migrations here without deleting existing stores.
     };
-    request.onsuccess=()=>resolve(request.result);
+    request.onsuccess=()=>{
+      const db=request.result;
+      db.onversionchange=()=>{
+        db.close();
+        if(state.db===db)state.db=null;
+        openModal('Garden storage changed','<p>Another Verdant window is resetting or updating garden storage. This window has released its connection. Close it, then reopen Verdant when that operation finishes.</p>');
+      };
+      resolve(db);
+    };
     request.onerror=()=>reject(request.error);
     request.onblocked=()=>reject(new Error('Close other tabs running Verdant before upgrading the database.'));
   });
@@ -989,8 +997,8 @@ async function openBackupDirectory(){
   return navigator.storage.getDirectory();
 }
 // Only discard Verdant's temporary ZIP exports, never arbitrary OPFS files or
-// IndexedDB records. This is used by the explicit reset flow and the legacy
-// "clear staged" action; deleting the staged ZIP is NOT a backup download.
+// IndexedDB records. Deleting a staged ZIP is NOT a backup download.
+// The reset module has its own cleanup implementation.
 async function clearStagedZips(showFeedback=true){
   let removed=0;
   try{
@@ -1005,8 +1013,7 @@ async function clearStagedZips(showFeedback=true){
     localStorage.removeItem(STAGED_BACKUP_KEY);
     if(showFeedback)backupInfo(`Cleared ${removed} temporary ZIP(s). Downloaded backups are unaffected.`);
   }catch(err){
-    // An explicit reset has already deleted the garden database at this point.
-    // A blocked OPFS API must not leave reset stuck with an undefined function.
+    // Callers may choose best-effort cleanup when OPFS is unavailable.
     localStorage.removeItem(STAGED_BACKUP_KEY);
     if(showFeedback)throw err;
     console.warn('Could not clear temporary Verdant ZIP files:',err);
@@ -1120,28 +1127,38 @@ async function importBackup(file) {
 }
 
 // A PWA cannot uninstall itself; this only deletes Verdant data and its own cache.
+let resetInProgress=false;
 function showResetWarning(){
-  openModal('Erase Verdant completely?',`<div class="form-note warning"><strong>Permanent action.</strong> This deletes all plants, types, journals, photos, map images and calibration, and your Pl@ntNet key from this browser. It also removes any staged ZIP exports, clears Verdant's offline cache and unregisters its service worker. It cannot be undone.</div><p>Export a backup first if you might want the data again. Removing the installed home-screen app must be done from Android or your browser.</p><form id="resetForm"><div class="field"><label>Type RESET to confirm</label><input name="confirmation" placeholder="RESET" autocomplete="off" required spellcheck="false"></div></form>`,`${cancelBtn}<button class="btn btn-outline danger-text" type="submit" form="resetForm">Permanently erase this app</button>`,'All local garden data will be lost');
-}
-async function deleteDB(name){
-  return new Promise((resolve,reject)=>{const req=indexedDB.deleteDatabase(name);req.onsuccess=()=>resolve();req.onerror=()=>reject(req.error);req.onblocked=()=>reject(new Error('Close any other open Verdant tabs, then retry.'));});
+  if(window.VerdantManagementBusy||resetInProgress){toast('Finish the current operation before resetting.',true);return;}
+  openModal('Erase Verdant completely?',`<p class="form-note warning">This permanently deletes all garden records, photos, maps, settings and your API key from this browser. It also clears temporary backups, the installation choice and offline access. Downloaded backups are unaffected.</p><form id="resetForm"><label for="resetConfirmation">Type RESET to confirm</label><input id="resetConfirmation" name="confirmation" required autocomplete="off" spellcheck="false"></form>`,`${cancelBtn}<button class="btn btn-outline danger-text" type="submit" form="resetForm">Permanently erase this app</button>`);
 }
 async function resetEntireApp(){
-  if(state.locationWatch!=null)stopLocation(false);
-  state.glMap?.remove();state.glMap=null;state.glStyleReady=false;
-  releasePhotos($('#plantList'));releasePhotos($('#modalRoot'));
-  for(const url of state.imageURLs.values())URL.revokeObjectURL(url);state.imageURLs.clear();
-  state.markers=[];state.plantTypes=[];state.images.clear();state.settings=[];state.map=null;state.apiKey='';
-  if(state.db){state.db.close();state.db=null;}
-  await deleteDB(DB_NAME);
-  await clearStagedZips(false);
-  // Clear the previous v1 database as part of this explicitly requested full reset.
-  await deleteDB('verdant-garden');
-  if('caches' in window){for(const name of await caches.keys())if(name.startsWith('verdant-shell-'))await caches.delete(name);}
-  if('serviceWorker' in navigator){const reg=await navigator.serviceWorker.getRegistration('./');if(reg?.active?.scriptURL.endsWith('/sw.js'))await reg.unregister();}
-  $('#modalRoot').innerHTML='';
-  document.body.classList.remove('modal-open');
-  document.querySelector('main').innerHTML=`<section class="reset-complete"><h1>Verdant data erased</h1><p>Garden records, map, photos and local key have been removed. To uninstall the PWA, long-press its home-screen icon and choose <strong>Uninstall</strong> or <strong>Remove</strong> (the exact wording varies by browser and Android).</p><p>Reopen the site with your local server to start a new garden.</p></section>`;
+  if(resetInProgress||window.VerdantManagementBusy)return;
+  resetInProgress=true;
+  let task;
+  try{
+    // Load the task UI before closing any storage or changing the current view.
+    const [{eraseVerdant},{createTaskModal}]=await Promise.all([
+      import('./src/settings/reset-data.js'),import('./src/settings/task-modal.js')
+    ]);
+    window.VerdantUI?.prepareReset?.();
+    unloadGardenWorkspace();
+    window.VerdantManagementBusy=true;
+    task=createTaskModal({title:'Erasing Verdant'});
+    task.report('Closing garden storage…');
+    if(state.db){state.db.close();state.db=null;}
+    await eraseVerdant(window,message=>task.report(message));
+    // Fresh startup recreates the empty database and resets all in-memory state.
+    window.location.reload();
+  }catch(error){
+    const message='Reset did not finish completely: '+errorMessage(error);
+    if(task){
+      task.report(message);
+      task.finish({label:'Reload Verdant',onDone:()=>window.location.reload()});
+    }else showError(error);
+  }finally{
+    resetInProgress=false;
+  }
 }
 /* Optional Pl@ntNet integration. Only a deliberate user action sends a photo. */
 function apiError(response) {
@@ -1418,6 +1435,7 @@ async function action(name,el) {
 async function onSubmit(form,submitter=null) {
   const fd=new FormData(form);
   switch(form.id) {
+    case 'resetForm':{if(formVal(fd,'confirmation')!=='RESET')throw Error('Type RESET exactly to confirm.');await resetEntireApp();return;}
     case 'gardenTitleForm':{
       const title=TITLE.record(formVal(fd,'gardenTitle'));
       await saveSetting(title);toast('Garden title saved and included in future backups.');return;
@@ -1427,7 +1445,6 @@ async function onSubmit(form,submitter=null) {
         maxDimension:Number(formVal(fd,'maxDimension')),format:formVal(fd,'format')});
       await saveSetting(options);toast('Photo settings saved. Only future uploads change. Use Optimize existing photos to migrate older pictures.');return;
     }
-    case 'resetForm':{if(formVal(fd,'confirmation')!=='RESET')throw new Error('Type RESET exactly to confirm.');await resetEntireApp();return;}
     case 'newMarkerForm':{
       const lat=Number(formVal(fd,'lat')),lon=Number(formVal(fd,'lon'));if(!isValidGeo(lat,lon))throw new Error('Invalid plant coordinates.');
       const selected=[...state.pendingUploads],identify=submitter?.value==='identify';

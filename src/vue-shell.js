@@ -179,6 +179,13 @@ export function mountGarden() {
       cleanupTool?.();cleanupTool=null;
       ui.managementTool=null;
     };
+    ui.prepareReset=()=>{
+      // Prevent an in-flight module import from mounting another database tool.
+      backupGeneration++;
+      cleanupBackup?.();cleanupBackup=null;
+      cleanupTool?.();cleanupTool=null;
+      ui.managementTool=null;
+    };
     return ui;
   }}).mount('#app');
   window.VerdantUI=ui;

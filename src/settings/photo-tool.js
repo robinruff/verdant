@@ -1,23 +1,17 @@
+import {gardenDatabase} from './database.js';
 /* Low-memory migration for existing photos. Shares IndexedDB with Verdant;
    no MapLibre, photo gallery, ZIP library or map decoder loaded. */
 'use strict';
 export function mountPhotoOptimizer(root) {
-  const DB_NAME='verdant-garden-v2',JOB_ID='photoOptimizationJob',SETTING_ID='photoOptimization';
+  const JOB_ID='photoOptimizationJob',SETTING_ID='photoOptimization';
   const $=id=>root.querySelector('#'+id);
-  let db=null,busy=false,pauseRequested=false;
+  let busy=false,pauseRequested=false;
+  const database=gardenDatabase({validate:db=>{
+    if(!['settings','images'].every(s=>db.objectStoreNames.contains(s)))throw Error('Unexpected database structure; no files modified.');
+  }});
   const display=message=>{$('status').textContent=message;};
   function request(req){return new Promise((resolve,reject)=>{req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error||Error('IndexedDB failed'));});}
-  async function openDB(){
-    if(db)return db;
-    db=await new Promise((resolve,reject)=>{
-      const r=indexedDB.open(DB_NAME);let absent=false;
-      r.onupgradeneeded=()=>{absent=true;r.transaction.abort();};
-      r.onerror=()=>reject(absent?Error('No Verdant data at this origin. Use your existing localhost address, port and Firefox profile.'):r.error||Error('Cannot open Verdant database'));
-      r.onsuccess=()=>resolve(r.result);
-    });
-    if(!['settings','images'].every(s=>db.objectStoreNames.contains(s)))throw Error('Unexpected database structure; no files modified.');
-    db.onversionchange=()=>{db.close();db=null;};return db;
-  }
+  const openDB=database.open;
   async function get(store,id){const d=await openDB();return request(d.transaction(store,'readonly').objectStore(store).get(id));}
   async function keys(store){const d=await openDB();return request(d.transaction(store,'readonly').objectStore(store).getAllKeys());}
   async function commit(image,job){
@@ -105,5 +99,5 @@ export function mountPhotoOptimizer(root) {
   $('start').onclick=()=>run(migrate);
   $('pause').onclick=()=>{pauseRequested=true;$('pause').disabled=true;display('Pausing safely after the current photograph…');};
   run(async()=>{await loadSettings();await inspect();});
-  return () => { pauseRequested=true; if (db) { db.close?.(); db=null; } };
+  return () => { pauseRequested=true; database.close(); };
 }

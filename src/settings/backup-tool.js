@@ -1,3 +1,4 @@
+import {gardenDatabase} from './database.js';
 import {createTaskModal} from './task-modal.js';
 import {diskWriter} from './disk-writer.js';
 import {replaceImportedGarden} from '../import-photos.js';
@@ -5,20 +6,13 @@ import {replaceImportedGarden} from '../import-photos.js';
    Never imports app.js, MapLibre, geotiff decoder, or photographs into RAM en masse. */
 'use strict';
 export function mountBackup(root, {onRestore=()=>{}}={}) {
-const DB_NAME='verdant-garden-v2', STAGED='verdant-staged-zip';
+const STAGED='verdant-staged-zip';
 const $=id=>root.querySelector('#'+id);
-let db=null, busy=false, task=null;
+const database=gardenDatabase();
+let busy=false, task=null;
 const report=text=>task.report(text);
 function idb(req){return new Promise((ok,fail)=>{req.onsuccess=()=>ok(req.result);req.onerror=()=>fail(req.error||Error('IndexedDB request failed'));});}
-async function openDB(){
-  if(db)return db;
-  return new Promise((resolve,reject)=>{
-    const req=indexedDB.open(DB_NAME);let fresh=false;
-    req.onupgradeneeded=()=>{fresh=true;req.transaction.abort();};
-    req.onerror=()=>reject(fresh?Error('No garden database at this origin. Check the exact address/port and Firefox profile.'):req.error||Error('Could not open the garden database'));
-    req.onsuccess=()=>{const value=req.result;if(fresh){value.close();reject(Error('Garden database does not exist'));return;}db=value;db.onversionchange=()=>{db.close();db=null;};resolve(db);};
-  });
-}
+const openDB=database.open;
 async function storeCall(store,op,arg){const d=await openDB();if(!d.objectStoreNames.contains(store))throw Error(`Database store ${store} is missing`);
   const s=d.transaction(store,'readonly').objectStore(store);return idb(arg===undefined?s[op]():s[op](arg));}
 const all=name=>storeCall(name,'getAll');
@@ -197,7 +191,8 @@ async function restore(){
   await task.confirm(`Incoming: ${d.plants.length} plants · ${d.plantTypes.length} types · ${d.images.length} images.\n\nThis replaces all current garden records and photos. Your local Pl@ntNet key stays on this device. Make sure you have backed up your current garden before continuing.`,'Replace garden');
 
   signal.throwIfAborted();
-  const current=await openDB();
+  update('Opening garden storage…');
+  const current=await openDB({signal,onWaiting:update});
   const secret=await get('settings','plantnetKey');
   const previousTitle=await get('settings','gardenTitle');
   update(`Staging and verifying images… 0 / ${d.images.length}`);
@@ -285,6 +280,6 @@ for(const id of ['create','restore','repair','update'])$(id).disabled=false;
 return () => {
   for(const id of ['create','restore','repair','update']){$(id).onclick=null;$(id).disabled=true;}
   $('restoreFile').onchange=null;$('restoreFile').value='';
-  if(db){db.close?.();db=null;}
+  database.close();
 };
 }
