@@ -73,7 +73,7 @@ async function main(){
   const rootEl={querySelector:sel=>{
     if(sel==='#download')throw Error('Separate Download button must not exist');
     if(sel==='#message')throw Error('Removed status area must not be used');
-    if(!dom.has(sel))dom.set(sel,{disabled:false,files:[],textContent:'',value:'',onclick:null});
+    if(!dom.has(sel))dom.set(sel,{disabled:false,files:[],textContent:'',value:'',onclick:null,click(){return this.onclick?.()}});
     return dom.get(sel);
   }};
   const stored=new Map();let restored=0,currentDialog,lastStatus;
@@ -102,11 +102,12 @@ async function main(){
   for(const [key,val] of Object.entries(globals)){original[key]=Object.getOwnPropertyDescriptor(globalThis,key);Object.defineProperty(globalThis,key,{configurable:true,writable:true,value:val});}
   try{
     const {mountBackup}=await import(pathToFileURL(path.join(root,'src/settings/backup-tool.js')).href);
-    mountBackup(rootEl,{onRestore:async()=>{restored++}});
+    const unmount=mountBackup(rootEl,{onRestore:async()=>{restored++}});
     async function runTask(action,{success=true,cancel=false,decline=false,opensGarden=false,discard=false,testCleanupFailure=false}={}){
       const writesBefore=wrote,before=restored;
       let confirmed=false;
-      const pending=dom.get('#'+action).onclick();
+      const clicked=dom.get('#'+action).onclick();
+      const pending=['restore','repair'].includes(action)?dom.get('#restoreFile').onchange():clicked;
       const activeDialog=currentDialog;
       await dom.get('#'+action).onclick();
       assert.equal(currentDialog,activeDialog,'duplicate action is blocked');
@@ -214,8 +215,6 @@ async function main(){
     await restoreAndDismiss(false);
     assert.match(lastStatus,/Maximum dimension/);
     assert.equal(wrote,before);
-    await runTask('inspect');
-    assert.match(lastStatus,/Garden checked/);
     await runTask('update',{success:false});
     assert.match(lastStatus,/Service workers are not supported/);
     navigator.serviceWorker={getRegistration:async()=>null};
@@ -225,8 +224,17 @@ async function main(){
     await runTask('update');
     assert.match(lastStatus,/Checked for an updated/);
     rootEl.querySelector('#restoreFile').files=[];
-    await restoreAndDismiss(false);
-    assert.match(lastStatus,/Select a ZIP/);
+    dom.get('#restore').onclick();
+    dom.get('#restoreFile').onchange();
+    assert.equal(currentDialog,null,'cancelling file picker does not open a modal');
+    assert.equal(window.VerdantManagementBusy,false);
+    unmount();
+    assert.equal(dom.get('#create').onclick,null);
+    assert.equal(dom.get('#restoreFile').onchange,null);
+    assert.equal(dom.get('#update').disabled,true);
+    const cleanupAgain=mountBackup(rootEl);
+    assert.equal(dom.get('#create').disabled,false);
+    cleanupAgain();
     console.log('PASS: default/explicit photo settings, legacy helper compatibility, original photo bytes, invalid input rollback');
   }finally{for(const [key,val] of Object.entries(original)){if(!val)delete globalThis[key];else Object.defineProperty(globalThis,key,val);}}
 }

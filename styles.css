@@ -410,3 +410,7 @@ body.taxonomy-dialog-open{overflow:hidden}
 .task-status{white-space:pre-wrap;overflow-wrap:anywhere;min-height:3em;margin:0}
 .task-modal [data-summary]{white-space:pre-wrap;margin:16px 0 0}
 .task-modal [hidden]{display:none!important}
+
+.backup-more{margin-top:16px;border-top:1px solid var(--line);padding-top:12px}
+.backup-more summary{cursor:pointer;color:var(--forest);font-size:12px;font-weight:700}
+.backup-more .microcopy{margin:10px 0}

@@ -1338,7 +1338,7 @@ async function action(name,el) {
     case 'show-type-on-map':showTypeOnMap(id);return;
     case 'clear-taxonomy-group':globalThis.VerdantTaxonomyFilterReset();return;
     case 'clear-type-filter':globalThis.VerdantTaxonomyFilterReset();return;
-    case 'help': openModal('Getting started',`<div class="form-note"><strong>1. Import a cropped GeoTIFF.</strong> It positions itself automatically; a screenshot with two calibration points still works.</div><p class="ident-help"><strong>2. Optional live GPS.</strong> Tap Locate to start tracking. The blue dot and accuracy circle update with new phone fixes, and the map follows your movement. Drag the map to stop camera following without stopping GPS, then tap Follow to recenter. Tap GPS on to stop tracking.</p><p class="ident-help"><strong>3. Add plants.</strong> Pan the map under the crosshair to set a permanent GPS position. Give the plant an optional nickname and type.</p><p class="ident-help"><strong>4. Keep a diary.</strong> Open a marker to add photos, notes, alive/dead changes, removal and ratings. Empty change fields never reset previous values.</p><p class="ident-help"><strong>5. Export backups regularly.</strong> Your data is entirely in this browser's storage, including photos. Use Settings → Create ZIP backup, then Download ready ZIP to protect it.</p><p class="ident-help">Pinch or mouse-wheel to zoom, drag to pan, and use +/- to adjust the map. The app works offline once cached; online Pl@ntNet identification is optional.</p>`,'<button class="btn btn-primary" data-action="close-modal">Got it</button>');return;
+    case 'help': openModal('Getting started',`<div class="form-note"><strong>1. Import a cropped GeoTIFF.</strong> It positions itself automatically; a screenshot with two calibration points still works.</div><p class="ident-help"><strong>2. Optional live GPS.</strong> Tap Locate to start tracking. The blue dot and accuracy circle update with new phone fixes, and the map follows your movement. Drag the map to stop camera following without stopping GPS, then tap Follow to recenter. Tap GPS on to stop tracking.</p><p class="ident-help"><strong>3. Add plants.</strong> Pan the map under the crosshair to set a permanent GPS position. Give the plant an optional nickname and type.</p><p class="ident-help"><strong>4. Keep a diary.</strong> Open a marker to add photos, notes, alive/dead changes, removal and ratings. Empty change fields never reset previous values.</p><p class="ident-help"><strong>5. Export backups regularly.</strong> Your data is entirely in this browser's storage, including photos. Use Settings → Create backup, then Download ZIP in the dialog to protect it.</p><p class="ident-help">Pinch or mouse-wheel to zoom, drag to pan, and use +/- to adjust the map. The app works offline once cached; online Pl@ntNet identification is optional.</p>`,'<button class="btn btn-primary" data-action="close-modal">Got it</button>');return;
     case 'upload-map':$('#mapFile').click();return;
     case 'upload-geotiff':$('#geoFile').click();return;
     case 'toggle-location':toggleLocation();return;
@@ -1390,11 +1390,11 @@ async function action(name,el) {
     case 'reject-identification':await finishIdentification(null);return;
     case 'retry-identification':if(state.identification){const info=state.identification;await identifyWithPhotos(info.markerId,info.statusId,info.photos.map(p=>({blob:p.blob,organ:p.organ})),info.region);}return;
     case 'go-settings':clearIdentification();closeModal();setTab('settings');$('#apiKey').focus();return;
-    case 'export':window.VerdantUI?.openManagement?.('backup');return;
+    case 'export':$('#create')?.click();return;
     case 'optimize-photos':window.VerdantUI?.openManagement?.('photos');return;
     case 'download-staged':await downloadStagedBackup();return;
     case 'clear-staged':await clearStagedZips();return;
-    case 'import':window.VerdantUI?.openManagement?.('backup');return;
+    case 'import':$('#restore')?.click();return;
     case 'test-api':await testPlantnet();return;
     case 'reset-application':showResetWarning();return;
     case 'remove-api-key':{

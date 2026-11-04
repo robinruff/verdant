@@ -1,6 +1,7 @@
+import {createTaskModal} from './settings/task-modal.js';
 // Verdant v1.5.3 Vue 3 presentation layer. The DB/ZIP/map engines remain plain JS.
 // Bundled Vue is the local, compiler-included production build (no CDN at runtime).
-const { createApp, defineComponent, reactive, ref, computed } = window.Vue || {};
+const { createApp, defineComponent, reactive, ref, computed, watch } = window.Vue || {};
 
 const PlantCard = defineComponent({
   name: 'PlantCard',
@@ -140,9 +141,32 @@ export function mountGarden() {
       if(e.shiftKey&&(document.activeElement===first||!dialog.contains(document.activeElement))){e.preventDefault();last.focus();}
       else if(!e.shiftKey&&(document.activeElement===last||!dialog.contains(document.activeElement))){e.preventDefault();first.focus();}
     };
+    // Inline backup controls live in Settings. Opening Settings still unloads
+    // the map/gallery in app.js; the backup engine is imported only here.
+    let cleanupBackup=null,backupGeneration=0;
+    watch(()=>ui.tab,async(tab)=>{
+      const generation=++backupGeneration;
+      cleanupBackup?.();cleanupBackup=null;
+      if(tab!=='settings')return;
+      try{
+        const {mountBackup}=await import('./settings/backup-tool.js');
+        if(generation!==backupGeneration||ui.tab!=='settings')return;
+        const root=document.getElementById('page-settings');
+        if(root)cleanupBackup=mountBackup(root,{onRestore:()=>window.location.reload()});
+      }catch(error){
+        if(generation!==backupGeneration)return;
+        const modal=createTaskModal({title:'Backup tools unavailable'});
+        modal.report('Could not load backup tools: '+(error.message||error));modal.finish({label:'Close'});
+      }
+    },{flush:'post'});
     let cleanupTool=null;
     ui.openManagement=async(kind)=>{
-      if(ui.managementTool || !['backup','photos'].includes(kind))return;
+      if(window.VerdantManagementBusy)return;
+      if(kind==='backup'){
+        document.getElementById('settingsBackupCard')?.scrollIntoView({block:'center',behavior:'smooth'});
+        return;
+      }
+      if(ui.managementTool || kind!=='photos')return;
       ui.managementTool=kind;
       await window.Vue.nextTick();
       const root=document.getElementById('settingsManagementRoot');

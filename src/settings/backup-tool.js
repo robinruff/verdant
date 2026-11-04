@@ -24,7 +24,6 @@ async function storeCall(store,op,arg){const d=await openDB();if(!d.objectStoreN
 const all=name=>storeCall(name,'getAll');
 const keys=name=>storeCall(name,'getAllKeys');
 const get=(name,key)=>storeCall(name,'get',key);
-const count=name=>storeCall(name,'count');
 async function directory(){if(!navigator.storage?.getDirectory)throw Error('Disk-backed ZIP creation is unavailable in this browser. Use the emergency rescue page to save records without clearing your data.');return navigator.storage.getDirectory();}
 function requireUnique(records,label){const seen=new Set();if(!Array.isArray(records))throw Error('Invalid '+label);
   for(const r of records){if(typeof r?.id!=='string'||!r.id||seen.has(r.id))throw Error('Missing/duplicate ID in '+label);seen.add(r.id);}return seen;}
@@ -45,11 +44,6 @@ function verifyReferences(d){
   const photoSettings=d.settings.find(s=>s.id==='photoOptimization');
   if(photoSettings){if(!window.VerdantPhotos)throw Error('Photo settings validator missing');VerdantPhotos.validate(photoSettings);}
   for(const setting of d.settings)if(setting.imageId&&!images.has(setting.imageId))throw Error('Missing map image '+setting.imageId);
-}
-async function inspect(){
-  const [plants,plantTypes,images]=await Promise.all([count('plants'),count('plantTypes'),count('images')]);
-  $('counts').textContent=`${plants} plants · ${plantTypes} types · ${images} image records`;
-  report('Garden checked. No changes were made.');
 }
 async function discardStagedZip(){
   const filename=localStorage.getItem(STAGED);
@@ -244,10 +238,10 @@ async function updateWorker(){
   report('Checked for an updated Service Worker. If the new version installed, reopen the garden. This operation never clears IndexedDB.');
 }
 async function doTask(fn,{title='Garden backup',cancellable=false,opensGarden=false}={}){
-  if(busy)return;
+  if(busy||window.VerdantManagementBusy)return;
   const previousFocus=document.activeElement;
   busy=true;window.VerdantManagementBusy=true;
-  for(const id of ['inspect','create','restore','repair','update'])$(id).disabled=true;
+  for(const id of ['create','restore','repair','update'])$(id).disabled=true;
   try{
     task=createTaskModal({title,cancellable,completionLabel:opensGarden?'Open garden':'Done'});
     report('Preparing…');
@@ -261,16 +255,36 @@ async function doTask(fn,{title='Garden backup',cancellable=false,opensGarden=fa
     }
     await task.dismissed;
   }finally{
+    $('restoreFile').value='';
     task=null;busy=false;window.VerdantManagementBusy=false;
-    for(const id of ['inspect','create','restore','repair','update'])$(id).disabled=false;
+    for(const id of ['create','restore','repair','update'])$(id).disabled=false;
     previousFocus?.focus();
   }
 }
-$('inspect').onclick=()=>doTask(inspect,{title:'Check garden'});
 $('create').onclick=()=>doTask(exportZip,{title:'Create backup'});
-$('restore').onclick=()=>doTask(restore,{title:'Import garden',cancellable:true,opensGarden:true});
-$('repair').onclick=()=>doTask(repairPhotos,{title:'Repair photos',cancellable:true,opensGarden:true});
+let selectedAction=null;
+function chooseBackup(action){
+  if(busy||window.VerdantManagementBusy)return;
+  selectedAction=action;
+  // Reset before opening so the same file can be selected again after cancel.
+  $('restoreFile').value='';
+  $('restoreFile').click();
+}
+$('restore').onclick=()=>chooseBackup('restore');
+$('repair').onclick=()=>chooseBackup('repair');
+$('restoreFile').onchange=()=>{
+  const action=selectedAction;selectedAction=null;
+  if(!$('restoreFile').files?.[0]||!action)return;
+  return action==='repair'
+    ?doTask(repairPhotos,{title:'Repair photos',cancellable:true,opensGarden:true})
+    :doTask(restore,{title:'Import garden',cancellable:true,opensGarden:true});
+};
 $('update').onclick=()=>doTask(updateWorker,{title:'Application updates'});
 
-  return () => { if (db) { db.close?.(); db=null; } };
+for(const id of ['create','restore','repair','update'])$(id).disabled=false;
+return () => {
+  for(const id of ['create','restore','repair','update']){$(id).onclick=null;$(id).disabled=true;}
+  $('restoreFile').onchange=null;$('restoreFile').value='';
+  if(db){db.close?.();db=null;}
+};
 }

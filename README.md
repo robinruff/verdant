@@ -44,9 +44,11 @@ verify a ZIP backup first.**
 
 ## Backups
 
-Use **Settings → Back up & restore** to export or restore a garden. Backups include
+Use the **Back up & restore** card directly in **Settings** to export or restore a garden. Backups include
 records, photos, map data and photo settings. **Repair photos only** recovers
-matching photos from an original backup without replacing garden records.
+matching photos from an original backup without replacing garden records; find it
+under **More options**, alongside the rescue link. Update checks are under
+**Offline & storage**.
 
 Choose **Create backup** to build and verify a ZIP, then **Download ZIP** in the
 modal. After checking that it saved, choose **Done** to discard the temporary copy.
