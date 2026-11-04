@@ -48,6 +48,12 @@ Use **Settings → Back up & restore** to export or restore a garden. Backups in
 records, photos, map data and photo settings. **Repair photos only** recovers
 matching photos from an original backup without replacing garden records.
 
+Choose **Create backup** to build and verify a ZIP, then **Download ZIP** in the
+modal. After checking that it saved, choose **Done** to discard the temporary copy.
+You can retry the download before closing. Closing without downloading discards
+the temporary ZIP; an interrupted session's temporary ZIP is removed when you next
+create a backup.
+
 Backup actions show progress, confirmations, results, and errors in a shared modal.
 Restore and photo repair can be cancelled until final replacement starts;
 cancellation keeps the existing garden. After a successful import or repair, choose

@@ -51,9 +51,19 @@ async function inspect(){
   $('counts').textContent=`${plants} plants · ${plantTypes} types · ${images} image records`;
   report('Garden checked. No changes were made.');
 }
+async function discardStagedZip(){
+  const filename=localStorage.getItem(STAGED);
+  if(!filename)return;
+  // Only remove the exact temporary ZIP tracked by this backup tool.
+  if(!/^verdant-stage-[a-z0-9-]+\.zip$/i.test(filename))throw Error('Unrecognized temporary backup filename');
+  try{await (await directory()).removeEntry(filename);}
+  catch(err){if(err?.name!=='NotFoundError')throw err;}
+  localStorage.removeItem(STAGED);
+}
 async function exportZip(){
   if(!window.VerdantZip)throw Error('Local ZIP engine missing.');
   const dir=await directory();
+  await discardStagedZip();
   const [plants,plantTypes,settings,imageIds]=await Promise.all([all('plants'),all('plantTypes'),all('settings'),keys('images')]);
   const imageMeta=[];
   // Each IndexedDB get returns a single image record; the Blob is released
@@ -109,21 +119,40 @@ async function exportZip(){
     let checked=0;
     for(const e of zip.entries.values()){await zip.verify(e);report(`Verifying backup… ${++checked} / ${expectedCount} files`);}
     localStorage.setItem(STAGED,filename);
-    $('download').disabled=false;
     report(`Backup ready: ${plants.length} plants and ${imageIds.length} images (${(result.bytes/1048576).toFixed(1)} MiB).\n\nDownload the ZIP and keep another copy somewhere safe. Your garden hasn't changed.`);
-  }catch(err){try{await dir.removeEntry(filename);}catch{}throw err;}
+    return await prepareDownload(handle);
+  }catch(err){
+    try{await dir.removeEntry(filename);if(localStorage.getItem(STAGED)===filename)localStorage.removeItem(STAGED);}catch{}
+    throw err;
+  }
 }
-async function download(){
-  const filename=localStorage.getItem(STAGED);if(!filename)throw Error('No completed ZIP staged here');
-  const file=await(await(await directory()).getFileHandle(filename)).getFile();if(!file.size)throw Error('Staged ZIP is empty');
-  const url=URL.createObjectURL(file),a=document.createElement('a');
+async function prepareDownload(handle){
+  const file=await handle.getFile();
+  if(!file.size)throw Error('Temporary backup ZIP is empty');
   const title=(await get('settings','gardenTitle'))?.value||'verdant-garden';
   const slug=String(title).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,52)||'verdant-garden';
-  const day=new Date().toISOString().slice(0,10);
-  a.href=url;a.download=`${slug}-${day}.zip`;document.body.append(a);a.click();a.remove();
-  setTimeout(()=>URL.revokeObjectURL(url),120000);
-  report(`Download requested: ${a.download} (${(file.size/1048576).toFixed(1)} MiB).\nCheck that the file was saved successfully, and keep a copy in another safe location.`);
+  const filename=`${slug}-${new Date().toISOString().slice(0,10)}.zip`;
+  const url=URL.createObjectURL(file);
+  // Prepare the URL before the user clicks Download ZIP. The click itself is
+  // synchronous, preserving the browser's user gesture on phones.
+  return {
+    label:'Discard',
+    action:{label:'Download ZIP',run:()=>{
+      const a=document.createElement('a');a.href=url;a.download=filename;
+      document.body.append(a);
+      try{a.click();}finally{a.remove();}
+      report(`Download requested: ${filename} (${(file.size/1048576).toFixed(1)} MiB).\n\nCheck that the ZIP saved successfully. You can download it again here if needed. Once saved, choose Done to discard the temporary copy.`);
+      task.setCompletionLabel('Done');
+    }},
+    onDone:async()=>{
+      // Browsers do not report completion for <a download>. Keep the backing
+      // file and URL alive until the user has checked the save and chooses Done.
+      await discardStagedZip();
+      URL.revokeObjectURL(url);
+    }
+  };
 }
+
 function validGeo(g){
   if(!g||!['Point','LineString','Polygon'].includes(g.type))return false;
   const pair=p=>Array.isArray(p)&&p.length===2&&p.every((n,i)=>typeof n==='number'&&Number.isFinite(n)&&Math.abs(n)<=(i?90:180));
@@ -218,13 +247,13 @@ async function doTask(fn,{title='Garden backup',cancellable=false,opensGarden=fa
   if(busy)return;
   const previousFocus=document.activeElement;
   busy=true;window.VerdantManagementBusy=true;
-  for(const id of ['inspect','create','download','restore','repair','update'])$(id).disabled=true;
+  for(const id of ['inspect','create','restore','repair','update'])$(id).disabled=true;
   try{
     task=createTaskModal({title,cancellable,completionLabel:opensGarden?'Open garden':'Done'});
     report('Preparing…');
     try{
-      await fn();
-      task.finish({onDone:opensGarden?onRestore:undefined});
+      const completion=await fn();
+      task.finish(completion||{onDone:opensGarden?onRestore:undefined});
     }catch(err){
       if(err?.name==='AbortError')report('Operation cancelled. Your existing garden is unchanged.');
       else{console.error(err);report('Error: '+(err?.message||err));}
@@ -234,17 +263,14 @@ async function doTask(fn,{title='Garden backup',cancellable=false,opensGarden=fa
   }finally{
     task=null;busy=false;window.VerdantManagementBusy=false;
     for(const id of ['inspect','create','restore','repair','update'])$(id).disabled=false;
-    $('download').disabled=!localStorage.getItem(STAGED);
     previousFocus?.focus();
   }
 }
 $('inspect').onclick=()=>doTask(inspect,{title:'Check garden'});
 $('create').onclick=()=>doTask(exportZip,{title:'Create backup'});
-$('download').onclick=()=>doTask(download,{title:'Download backup'});
 $('restore').onclick=()=>doTask(restore,{title:'Import garden',cancellable:true,opensGarden:true});
 $('repair').onclick=()=>doTask(repairPhotos,{title:'Repair photos',cancellable:true,opensGarden:true});
 $('update').onclick=()=>doTask(updateWorker,{title:'Application updates'});
-(async()=>{try{const staged=localStorage.getItem(STAGED);if(!staged)return;const file=await(await(await directory()).getFileHandle(staged)).getFile();if(file.size&&!busy){$('download').disabled=false;await doTask(async()=>report(`Previous completed ZIP available to re-download (${(file.size/1048576).toFixed(1)} MiB).`),{title:'Saved backup'});}}catch{}})();
 
   return () => { if (db) { db.close?.(); db=null; } };
 }
