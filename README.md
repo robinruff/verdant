@@ -48,6 +48,10 @@ Use **Settings → Back up & restore** to export or restore a garden. Backups in
 records, photos, map data and photo settings. **Repair photos only** recovers
 matching photos from an original backup without replacing garden records.
 
+Restore shows progress in a modal. Cancel is available until final replacement
+starts; cancellation keeps the existing garden. After a successful import, choose
+**Open garden** to return to the map.
+
 Backups also contain Typst templates. Extract the ZIP, then run:
 
 ```bash

@@ -402,3 +402,9 @@ body.taxonomy-dialog-open{overflow:hidden}
 .management-advanced{padding:.8rem;margin:1rem 0}
 .management-advanced summary{cursor:pointer;font-weight:600}
 @media(max-width:550px){.management-card{padding:.9rem}.management-card .btn{margin-bottom:.5rem}}
+\n/* Native modal keeps the map and Settings inert during garden replacement. */
+.import-progress{box-sizing:border-box;width:min(440px,calc(100% - 32px));max-height:90dvh;overflow:auto;padding:24px;border:0;border-radius:16px;color:var(--ink);background:#fff;box-shadow:0 24px 75px #0d2e25aa}
+.import-progress::backdrop{background:#102d25aa}
+.import-progress h2{margin-top:0}
+.import-status{white-space:pre-wrap;overflow-wrap:anywhere;min-height:3em}
+.import-actions{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap}

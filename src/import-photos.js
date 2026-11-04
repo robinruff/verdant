@@ -14,17 +14,18 @@ function transact(db,storeName,doWork){return new Promise((resolve,reject)=>{
   tx.onerror=()=>reject(tx.error||Error('Image storage transaction failed'));
   try{doWork(tx.objectStore(storeName),tx);}catch(err){try{tx.abort();}catch{}reject(err);}
 });}
-async function detachBlob(source,mimeType){
+async function detachBlob(source,mimeType,signal){
   // Only one photo is buffered at once; never materialize the complete ZIP.
   const parts=[];let crc=0xffffffff;
   for(let at=0;at<source.size;at+=CHUNK){
+    signal?.throwIfAborted();
     const part=new Uint8Array(await source.slice(at,at+CHUNK).arrayBuffer());
     parts.push(part);crc=updateCRC(crc,part);
   }
   return {blob:new Blob(parts,{type:mimeType}),crc:finishCRC(crc)};
 }
-async function checksum(blob){let crc=0xffffffff;
-  for(let at=0;at<blob.size;at+=CHUNK)crc=updateCRC(crc,new Uint8Array(await blob.slice(at,at+CHUNK).arrayBuffer()));
+async function checksum(blob,signal){let crc=0xffffffff;
+  for(let at=0;at<blob.size;at+=CHUNK){signal?.throwIfAborted();crc=updateCRC(crc,new Uint8Array(await blob.slice(at,at+CHUNK).arrayBuffer()));}
   return finishCRC(crc);
 }
 async function cleanup(db,ids){if(!ids.length)return;
@@ -34,15 +35,16 @@ async function cleanup(db,ids){if(!ids.length)return;
 /** Restore metadata and images as one final transaction after staged image validation.
  * Existing plant, image and settings records are not cleared if staging fails.
  */
-export async function replaceImportedGarden(db,data,{apiKey=null,previousTitle=null,onProgress=()=>{},imagesOnly=false}={}){
+export async function replaceImportedGarden(db,data,{apiKey=null,previousTitle=null,onProgress=()=>{},imagesOnly=false,signal,onCommit=()=>{}}={}){
   const nonce=(globalThis.crypto?.randomUUID?.()||`${Date.now()}-${Math.random()}`).replace(/[^a-z0-9-]/gi,'');
   const staged=[];
   try{
     for(let i=0;i<data.images.length;i++){
+      signal?.throwIfAborted();
       const image=data.images[i];
       if(!(image.blob instanceof Blob)||!image.blob.size)throw Error(`Missing image data: ${image.id}`);
       const tempId=`\uffffverdant-import-${nonce}-${i}`;
-      const {blob,crc}=await detachBlob(image.blob,image.mimeType);
+      const {blob,crc}=await detachBlob(image.blob,image.mimeType,signal);
       staged.push({tempId,originalId:image.id,crc,size:blob.size});
       // Detached from the selected ZIP's File/Blob backing before persistence.
       const record={id:tempId,name:image.name||'image',mimeType:image.mimeType,
@@ -50,12 +52,14 @@ export async function replaceImportedGarden(db,data,{apiKey=null,previousTitle=n
       await transact(db,'images',store=>store.put(record));
       const stored=await request(db.transaction('images','readonly').objectStore('images').get(tempId));
       if(!(stored?.blob instanceof Blob)||stored.blob.size!==blob.size||
-          await checksum(stored.blob)!==crc)throw Error(`Stored photo verification failed: ${image.id}. Original garden was preserved.`);
-      onProgress(`Checking imported images… ${i+1} / ${data.images.length}`);
+          await checksum(stored.blob,signal)!==crc)throw Error(`Stored photo verification failed: ${image.id}. Original garden was preserved.`);
+      onProgress(`Staging and verifying images… ${i+1} / ${data.images.length}`);
     }
     // Names/IDs are tiny; only one image Blob is ever materialized at a time.
     const keys=await request(db.transaction('images','readonly').objectStore('images').getAllKeys());
     const kept=new Set(staged.map(s=>s.tempId));
+    signal?.throwIfAborted();
+    onCommit();
     await new Promise((resolve,reject)=>{
       const tx=db.transaction(imagesOnly?['images']:['plants','plantTypes','images','settings'],'readwrite');
       const photos=tx.objectStore('images');

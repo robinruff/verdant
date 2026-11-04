@@ -156,19 +156,74 @@ function validateIncoming(parsed){
 async function restore(){
   const file=$('restoreFile').files?.[0];if(!file)throw Error('Select a ZIP backup first');
   if(!window.VerdantZip)throw Error('ZIP library missing');
-  report('Verifying ZIP and checking every image checksum (no changes to garden yet)…');
-  const parsed=await VerdantZip.parseVerdantZip(file,name=>report('Verified ZIP entry: '+name));
-  const d=validateIncoming(parsed);
-  report(`Verified backup: ${d.plants.length} plants · ${d.plantTypes.length} types · ${d.images.length} image files · created ${new Date(parsed.exportedAt).toLocaleString()}.\nNo data has been replaced. Review these details before continuing.`);
-  const decision=confirm(`Replace ALL existing Verdant records?\n\nIncoming: ${d.plants.length} plants, ${d.plantTypes.length} types, ${d.images.length} images.\n\nAll local garden records and photos will be replaced. Your local Pl@ntNet key will remain.\n\nOnly proceed after backing up your existing garden.`);
-  if(!decision){report('Restore cancelled. No garden data changed.');return;}
-  const current=await openDB();
-  const secret=await get('settings','plantnetKey');
-  const previousTitle=await get('settings','gardenTitle');
-  await replaceImportedGarden(current,d,{apiKey:secret,previousTitle,
-    onProgress:text=>report(text)});
-  report(`Restore complete: ${d.plants.length} plants, ${d.images.length} images. Reloading garden…`);
-  await onRestore();
+  const controller=new AbortController();
+  const {signal}=controller;
+  const dialog=document.createElement('dialog');
+  dialog.className='import-progress';
+  dialog.setAttribute('aria-labelledby','import-title');
+  dialog.innerHTML=`<h2 id="import-title">Import garden</h2>
+    <p class="import-status" role="status" aria-live="polite" aria-atomic="true"></p>
+    <div class="import-actions"><button class="btn btn-outline" data-cancel>Cancel</button>
+    <button class="btn btn-primary" data-open disabled>Open garden</button></div>`;
+  const status=dialog.querySelector('.import-status');
+  const cancel=dialog.querySelector('[data-cancel]');
+  const open=dialog.querySelector('[data-open]');
+  const previousFocus=document.activeElement;
+  const update=text=>{status.textContent=text;report(text);};
+  let finished=false,completed=false;
+  const cancelImport=()=>{
+    if(cancel.disabled)return;
+    controller.abort();cancel.disabled=true;update('Cancelling import…');
+  };
+  cancel.onclick=cancelImport;
+  dialog.addEventListener('cancel',event=>{event.preventDefault();if(finished){if(!completed)cancel.click();}else cancelImport();});
+  document.body.append(dialog);
+  dialog.showModal();
+  // Keep management busy until the user dismisses the result or opens the garden.
+  let finish;
+  const dismissed=new Promise(resolve=>{
+    const close=()=>{dialog.close();dialog.remove();previousFocus?.focus();resolve();};
+    finish=(success)=>{
+      finished=true;completed=success;
+      cancel.hidden=success;
+      cancel.disabled=false;cancel.textContent='Close';cancel.onclick=close;
+      open.disabled=!success;
+      open.onclick=async()=>{
+        open.disabled=true;cancel.disabled=true;
+        try{await onRestore();close();}
+        catch(err){update('Garden imported, but could not open it: '+err.message);open.disabled=false;cancel.disabled=false;}
+      };
+      if(success)open.focus();else cancel.focus();
+    };
+  });
+  try{
+    update('Checking ZIP checksums…');
+    let verified=0;
+    const parsed=await VerdantZip.parseVerdantZip(file,name=>update(`Checking ZIP… ${++verified} entries verified. Latest: ${name}`),{signal});
+    signal.throwIfAborted();
+    update('Validating garden records…');
+    // Let the modal paint before synchronous record validation.
+    await new Promise(resolve=>setTimeout(resolve,0));
+    signal.throwIfAborted();
+    const d=validateIncoming(parsed);
+    signal.throwIfAborted();
+    const decision=confirm(`Replace ALL existing Verdant records?\n\nIncoming: ${d.plants.length} plants, ${d.plantTypes.length} types, ${d.images.length} images.\n\nAll local garden records and photos will be replaced. Your local Pl@ntNet key will remain.\n\nOnly proceed after backing up your existing garden.`);
+    if(!decision)controller.abort();
+    signal.throwIfAborted();
+    const current=await openDB();
+    const secret=await get('settings','plantnetKey');
+    const previousTitle=await get('settings','gardenTitle');
+    update(`Staging and verifying images… 0 / ${d.images.length}`);
+    await replaceImportedGarden(current,d,{apiKey:secret,previousTitle,signal,
+      onProgress:update,onCommit:()=>{cancel.disabled=true;update('Finishing import…');}});
+    update(`Import complete: ${d.plants.length} plants, ${d.images.length} images. Open your garden when ready.`);
+    finish(true);
+  }catch(err){
+    update(err?.name==='AbortError'?'Import cancelled. Your existing garden is unchanged.':
+      'Import failed: '+(err?.message||err));
+    finish(false);
+  }
+  await dismissed;
 }
 async function repairPhotos(){
   const file=$('restoreFile').files?.[0];if(!file)throw Error('Select your original Verdant ZIP backup first');

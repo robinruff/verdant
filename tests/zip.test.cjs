@@ -18,6 +18,8 @@ const Z=context.globalThis.VerdantZip;
   assert.equal(parsed.data.images[0].blob.size,photos[0].size);
   assert.deepEqual(Buffer.from(await parsed.data.images[1].blob.arrayBuffer()),Buffer.from(await photos[1].arrayBuffer()));
   assert(calls>=10,'Should stream photo in many chunks rather than one buffer');
+  const controller=new AbortController();
+  await assert.rejects(()=>Z.parseVerdantZip(zip,()=>controller.abort(),{signal:controller.signal}),{name:'AbortError'});
   // Corruption of a photo must fail before restore confirmation.
   const orig=Buffer.from(await zip.arrayBuffer());const index=orig.indexOf(Buffer.from([0,1,2,3,4,0,255]));assert(index>=0);orig[index+3]^=0x40;
   await assert.rejects(()=>Z.parseVerdantZip(new Blob([orig])),/CRC mismatch/);

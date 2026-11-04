@@ -2,15 +2,19 @@ const assert=require('node:assert/strict');
 const path=require('node:path');
 const {pathToFileURL}=require('node:url');
 const root=path.resolve(__dirname,'..');
-function fakeDB({corruptStage=false}={}){
+function fakeDB({corruptStage=false,failCommit=false}={}){
   const data=Object.fromEntries(['plants','plantTypes','images','settings'].map(n=>[n,new Map()]));
   data.plants.set('old-plant',{id:'old-plant'});
   data.settings.set('old-setting',{id:'old-setting',value:'keep unless committed'});
   data.images.set('old-photo',{id:'old-photo',blob:new Blob(['ORIGINAL'])});
   const db={transaction(names){
-    const tx={};const pending=[];
+    const snapshot=Object.fromEntries(Object.entries(data).map(([n,records])=>[n,new Map(records)]));
+    let aborted=false;
+    const tx={abort(){aborted=true;for(const n of Object.keys(data))data[n]=new Map(snapshot[n]);tx.onabort?.();}};const pending=[];
     let pendingRequests=0,ready=false;
-    function maybeComplete(){if(!ready||pendingRequests)return;setTimeout(()=>tx.oncomplete?.(),0);}
+    function maybeComplete(){if(!ready||pendingRequests||aborted)return;setTimeout(()=>{
+      if(failCommit&&Array.isArray(names))tx.abort();else if(!aborted)tx.oncomplete?.();
+    },0);}
     function req(fn){const r={};pendingRequests++;queueMicrotask(()=>{
       try{r.result=fn();r.onsuccess?.();}catch(e){r.error=e;r.onerror?.();tx.error=e;tx.onabort?.();}
       pendingRequests--;maybeComplete();
@@ -44,6 +48,27 @@ function fakeDB({corruptStage=false}={}){
   assert.deepEqual([...failed.data.plants.keys()],['old-plant'],'garden preserved on stored image failure');
   assert.deepEqual([...new Uint8Array(await failed.data.images.get('old-photo').blob.arrayBuffer())],[...Buffer.from('ORIGINAL')]);
   assert(![...failed.data.images.keys()].some(k=>k.startsWith('\uffffverdant-import-')));
+  for(const when of ['before','staged']){
+    const cancelled=fakeDB(),controller=new AbortController();
+    cancelled.data.images.set('\uffffverdant-import-other-0',{id:'\uffffverdant-import-other-0',blob:payload});
+    if(when==='before')controller.abort();
+    let committed=false;
+    await assert.rejects(()=>replaceImportedGarden(cancelled.db,next,{signal:controller.signal,
+      onProgress:()=>controller.abort(),onCommit:()=>{committed=true}}),{name:'AbortError'});
+    assert.equal(committed,false);
+    assert.deepEqual([...cancelled.data.plants.keys()],['old-plant']);
+    assert.equal(await cancelled.data.images.get('old-photo').blob.text(),'ORIGINAL');
+    assert.deepEqual([...cancelled.data.images.keys()],['old-photo','\uffffverdant-import-other-0']);
+  }
+  const rollback=fakeDB({failCommit:true});
+  await assert.rejects(()=>replaceImportedGarden(rollback.db,next),/original garden preserved/);
+  assert.deepEqual([...rollback.data.plants.keys()],['old-plant']);
+  assert.equal(await rollback.data.images.get('old-photo').blob.text(),'ORIGINAL');
+  assert.deepEqual([...rollback.data.images.keys()],['old-photo']);
+  const settings=fakeDB();
+  await replaceImportedGarden(settings.db,next,{apiKey:{id:'plantnetKey',value:'secret'},previousTitle:{id:'gardenTitle',value:'Local garden'}});
+  assert.equal(settings.data.settings.get('plantnetKey').value,'secret');
+  assert.equal(settings.data.settings.get('gardenTitle').value,'Local garden');
   const repair=fakeDB();
   repair.data.plants.set('iphone-plant',{id:'iphone-plant'});
   repair.data.images.set('iphone-photo',{id:'iphone-photo',mimeType:'image/jpeg',blob:new Blob(['PHONE'])});

@@ -55,7 +55,8 @@ async function writeZip(output,entries,onProgress=()=>{}){
   await write(end);await writer.close();done=true;return {files,bytes:offset};
  }finally{if(!done){try{await writer.abort?.();}catch{}}}
 }
-async function openZip(blob,progress=()=>{}){
+async function openZip(blob,progress=()=>{},{signal}={}){
+ signal?.throwIfAborted();
  if(!(blob instanceof Blob))throw Error('Select a ZIP file');
  if(blob.size<22||blob.size>MAX)throw Error('ZIP too small or larger than 4 GiB');
  const tailStart=Math.max(0,blob.size-65557);const tail=new Uint8Array(await blob.slice(tailStart).arrayBuffer()),view=new DataView(tail.buffer);
@@ -68,6 +69,7 @@ async function openZip(blob,progress=()=>{}){
  const central=new DataView(await blob.slice(centralOffset,centralOffset+centralSize).arrayBuffer());
  const entries=new Map();let at=0;
  for(let n=0;n<count;n++){
+  signal?.throwIfAborted();
   if(at+46>central.byteLength||u32r(central,at)!==0x02014b50)throw Error('Invalid central directory');
   const flags=u16r(central,at+8),method=u16r(central,at+10),crc=u32r(central,at+16),compressed=u32r(central,at+20),size=u32r(central,at+24);
   const nameLength=u16r(central,at+28),extraLength=u16r(central,at+30),commentLength=u16r(central,at+32),localOffset=u32r(central,at+42);
@@ -85,14 +87,15 @@ async function openZip(blob,progress=()=>{}){
  if(at!==central.byteLength)throw Error('Malformed ZIP directory');
  async function verify(e){
   let crc=0xffffffff;
-  for(let i=0;i<e.size;i+=CHUNK)crc=updateCRC(crc,new Uint8Array(await e.blob.slice(i,i+CHUNK).arrayBuffer()));
+  for(let i=0;i<e.size;i+=CHUNK){signal?.throwIfAborted();crc=updateCRC(crc,new Uint8Array(await e.blob.slice(i,i+CHUNK).arrayBuffer()));}
+  signal?.throwIfAborted();
   if(((crc^0xffffffff)>>>0)!==e.crc)throw Error('Backup ZIP CRC mismatch: '+e.name);
   progress(e.name);
  }
  return {entries,verify};
 }
-async function parseVerdantZip(file,progress=()=>{}){
- const zip=await openZip(file,progress),json=zip.entries.get('data.json');
+async function parseVerdantZip(file,progress=()=>{},options={}){
+ const zip=await openZip(file,progress,options),json=zip.entries.get('data.json');
  if(!json||json.size>24*1024*1024)throw Error('ZIP missing data.json or records are unexpectedly large');
  await zip.verify(json);
  let parsed;try{parsed=JSON.parse(await json.blob.text());}catch{throw Error('Invalid data.json');}

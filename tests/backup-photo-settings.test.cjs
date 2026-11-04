@@ -73,14 +73,20 @@ async function main(){
     if(!dom.has(sel))dom.set(sel,{disabled:false,files:[],textContent:'',value:'',onclick:null});
     return dom.get(sel);
   }};
-  const stored=new Map();let restored=0;
+  const stored=new Map();let restored=0,currentDialog;
   const globals={
     window:{VerdantZip:Zip,VerdantPhotos:legacyPhotos,VerdantGardenTitle:{validateRecord(){}}},
     VerdantZip:Zip,VerdantPhotos:legacyPhotos,VerdantGardenTitle:{validateRecord(){}},
     indexedDB:{open(){const r={};queueMicrotask(()=>{r.result=db;r.onsuccess?.()});return r;}},
     navigator:{storage:{getDirectory:async()=>directory}},
     localStorage:{getItem:key=>stored.get(key)||null,setItem:(key,val)=>stored.set(key,val)},
-    document:{baseURI:'https://verdant.example/'},
+    document:{baseURI:'https://verdant.example/',body:{append(){}},createElement(){
+      const nodes=new Map();
+      currentDialog={setAttribute(){},addEventListener(){},showModal(){},close(){},remove(){},
+        querySelector(key){if(!nodes.has(key))nodes.set(key,{disabled:key==='[data-open]',focus(){},click(){if(!this.disabled)return this.onclick?.()}});return nodes.get(key)}
+      };
+      return currentDialog;
+    }},
     fetch:async url=>{
       const filename=String(url).split('/print/')[1];
       const filepath=path.join(root,'public/print',filename);
@@ -93,6 +99,25 @@ async function main(){
   try{
     const {mountBackup}=await import(pathToFileURL(path.join(root,'src/settings/backup-tool.js')).href);
     mountBackup(rootEl,{onRestore:async()=>{restored++}});
+    async function restoreAndDismiss(success=true,cancel=false){
+      const before=restored;
+      const pending=dom.get('#restore').onclick();
+      const activeDialog=currentDialog;
+      await dom.get('#restore').onclick();
+      assert.equal(currentDialog,activeDialog,'duplicate restore is blocked');
+      if(cancel)await currentDialog.querySelector('[data-cancel]').click();
+      for(let i=0;i<1000;i++){
+        if(currentDialog?.querySelector('[data-cancel]').textContent==='Close')break;
+        await new Promise(resolve=>setTimeout(resolve,1));
+      }
+      assert.equal(currentDialog.querySelector('[data-cancel]').textContent,'Close');
+      assert.equal(restored,before,'restore callback waits for Open garden');
+      assert.equal(currentDialog.querySelector('[data-open]').disabled,!success);
+      assert.equal(window.VerdantManagementBusy,true);
+      await currentDialog.querySelector(success?'[data-open]':'[data-cancel]').click();
+      await pending;
+      currentDialog=null;
+    }
     // Exports should always include the default even without a saved record.
     await dom.get('#create').onclick();
     assert.match(dom.get('#message').textContent,/Backup ready/);
@@ -105,14 +130,18 @@ async function main(){
     records.settings.set('photoOptimization',webp);
     const oldZip=await zipFrom([{path:'data.json',blob:new Blob([JSON.stringify(backupObj([]))])},{path:'images/00001.bin',blob}]);
     rootEl.querySelector('#restoreFile').files=[oldZip];
-    await dom.get('#restore').onclick();
+    await restoreAndDismiss();
     assert.deepEqual(plain(records.settings.get('photoOptimization')),defaults);
     assert.equal(restored,1);
     assert.deepEqual([...new Uint8Array(await records.images.get('photo1').blob.arrayBuffer())],[...imageBytes]);
+    const beforeCancel=wrote;
+    await restoreAndDismiss(false,true);
+    assert.match(dom.get('#message').textContent,/Import cancelled/);
+    assert.equal(wrote,beforeCancel,'cancelling ZIP verification makes no database changes');
     // New ZIPs retain an explicit, non-default garden profile through the same path.
     const explicitZip=await zipFrom([{path:'data.json',blob:new Blob([JSON.stringify(backupObj([webp]))])},{path:'images/00001.bin',blob}]);
     rootEl.querySelector('#restoreFile').files=[explicitZip];
-    await dom.get('#restore').onclick();
+    await restoreAndDismiss();
     assert.deepEqual(plain(records.settings.get('photoOptimization')),webp);
     assert.equal(restored,2);
     // Repair only the images referenced by the current garden, preserving new photos and journals.
@@ -134,7 +163,7 @@ async function main(){
     const badZip=await zipFrom([{path:'data.json',blob:new Blob([JSON.stringify(backupObj([{...webp,maxDimension:50}]))])},{path:'images/00001.bin',blob}]);
     const before=wrote;
     rootEl.querySelector('#restoreFile').files=[badZip];
-    await dom.get('#restore').onclick();
+    await restoreAndDismiss(false);
     assert.match(dom.get('#message').textContent,/Maximum dimension/);
     assert.equal(wrote,before);
     console.log('PASS: default/explicit photo settings, legacy helper compatibility, original photo bytes, invalid input rollback');
