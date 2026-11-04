@@ -159,12 +159,16 @@ async function restore(){
   const controller=new AbortController();
   const {signal}=controller;
   const dialog=document.createElement('dialog');
-  dialog.className='import-progress';
+  dialog.className='modal import-progress';
   dialog.setAttribute('aria-labelledby','import-title');
-  dialog.innerHTML=`<h2 id="import-title">Import garden</h2>
-    <p class="import-status" role="status" aria-live="polite" aria-atomic="true"></p>
-    <div class="import-actions"><button class="btn btn-outline" data-cancel>Cancel</button>
+  dialog.innerHTML=`<div class="modal-head"><h2 id="import-title">Import garden</h2></div>
+    <div class="modal-body"><p class="import-status" role="status" aria-live="polite" aria-atomic="true"></p>
+    <p class="form-note warning" data-summary hidden></p></div>
+    <div class="modal-footer"><button class="btn btn-outline" data-cancel>Cancel</button>
+    <button class="btn btn-primary" data-replace hidden>Replace garden</button>
     <button class="btn btn-primary" data-open disabled>Open garden</button></div>`;
+  const summary=dialog.querySelector('[data-summary]');
+  const replace=dialog.querySelector('[data-replace]');
   const status=dialog.querySelector('.import-status');
   const cancel=dialog.querySelector('[data-cancel]');
   const open=dialog.querySelector('[data-open]');
@@ -185,6 +189,7 @@ async function restore(){
     const close=()=>{dialog.close();dialog.remove();previousFocus?.focus();resolve();};
     finish=(success)=>{
       finished=true;completed=success;
+      replace.hidden=true;summary.hidden=true;
       cancel.hidden=success;
       cancel.disabled=false;cancel.textContent='Close';cancel.onclick=close;
       open.disabled=!success;
@@ -207,8 +212,22 @@ async function restore(){
     signal.throwIfAborted();
     const d=validateIncoming(parsed);
     signal.throwIfAborted();
-    const decision=confirm(`Replace ALL existing Verdant records?\n\nIncoming: ${d.plants.length} plants, ${d.plantTypes.length} types, ${d.images.length} images.\n\nAll local garden records and photos will be replaced. Your local Pl@ntNet key will remain.\n\nOnly proceed after backing up your existing garden.`);
-    if(!decision)controller.abort();
+    update('Backup checked. Review the summary before replacing your garden.');
+    summary.textContent=`Incoming: ${d.plants.length} plants · ${d.plantTypes.length} types · ${d.images.length} images.\n\nThis replaces all current garden records and photos. Your local Pl@ntNet key stays on this device. Make sure you have backed up your current garden before continuing.`;
+    summary.hidden=false;
+    replace.hidden=false;
+    // Confirmation stays inside the dialog; Cancel/Escape also settles this wait.
+    await new Promise((resolve,reject)=>{
+      const abort=()=>{replace.onclick=null;reject(signal.reason);};
+      signal.addEventListener('abort',abort,{once:true});
+      replace.onclick=()=>{
+        signal.removeEventListener('abort',abort);
+        replace.onclick=null;resolve();
+      };
+      cancel.focus();
+    });
+    replace.hidden=true;
+    summary.hidden=true;
     signal.throwIfAborted();
     const current=await openDB();
     const secret=await get('settings','plantnetKey');

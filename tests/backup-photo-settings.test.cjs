@@ -99,7 +99,9 @@ async function main(){
   try{
     const {mountBackup}=await import(pathToFileURL(path.join(root,'src/settings/backup-tool.js')).href);
     mountBackup(rootEl,{onRestore:async()=>{restored++}});
-    async function restoreAndDismiss(success=true,cancel=false){
+    async function restoreAndDismiss(success=true,cancel=false,decline=false){
+      const writesBefore=wrote;
+      let confirmed=false;
       const before=restored;
       const pending=dom.get('#restore').onclick();
       const activeDialog=currentDialog;
@@ -108,6 +110,13 @@ async function main(){
       if(cancel)await currentDialog.querySelector('[data-cancel]').click();
       for(let i=0;i<1000;i++){
         if(currentDialog?.querySelector('[data-cancel]').textContent==='Close')break;
+        const replace=currentDialog.querySelector('[data-replace]');
+        if(replace.onclick&&!confirmed){
+          assert.equal(wrote,writesBefore,'review appears before any garden writes');
+          assert.match(currentDialog.querySelector('[data-summary]').textContent,/replaces all current garden records/);
+          confirmed=true;
+          await currentDialog.querySelector(decline?'[data-cancel]':'[data-replace]').click();
+        }
         await new Promise(resolve=>setTimeout(resolve,1));
       }
       assert.equal(currentDialog.querySelector('[data-cancel]').textContent,'Close');
@@ -138,6 +147,8 @@ async function main(){
     await restoreAndDismiss(false,true);
     assert.match(dom.get('#message').textContent,/Import cancelled/);
     assert.equal(wrote,beforeCancel,'cancelling ZIP verification makes no database changes');
+    await restoreAndDismiss(false,false,true);
+    assert.equal(wrote,beforeCancel,'declining replacement preserves garden');
     // New ZIPs retain an explicit, non-default garden profile through the same path.
     const explicitZip=await zipFrom([{path:'data.json',blob:new Blob([JSON.stringify(backupObj([webp]))])},{path:'images/00001.bin',blob}]);
     rootEl.querySelector('#restoreFile').files=[explicitZip];
