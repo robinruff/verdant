@@ -70,20 +70,22 @@ async function main(){
   const directory={getFileHandle:async filename=>handle(filename),removeEntry:async filename=>{disk.delete(filename)}};
   const dom=new Map();
   const rootEl={querySelector:sel=>{
+    if(sel==='#message')throw Error('Removed status area must not be used');
     if(!dom.has(sel))dom.set(sel,{disabled:false,files:[],textContent:'',value:'',onclick:null});
     return dom.get(sel);
   }};
-  const stored=new Map();let restored=0,currentDialog;
+  const stored=new Map();let restored=0,currentDialog,lastStatus;
   const globals={
     window:{VerdantZip:Zip,VerdantPhotos:legacyPhotos,VerdantGardenTitle:{validateRecord(){}}},
     VerdantZip:Zip,VerdantPhotos:legacyPhotos,VerdantGardenTitle:{validateRecord(){}},
     indexedDB:{open(){const r={};queueMicrotask(()=>{r.result=db;r.onsuccess?.()});return r;}},
     navigator:{storage:{getDirectory:async()=>directory}},
     localStorage:{getItem:key=>stored.get(key)||null,setItem:(key,val)=>stored.set(key,val)},
-    document:{baseURI:'https://verdant.example/',body:{append(){}},createElement(){
+    document:{baseURI:'https://verdant.example/',body:{append(){}},createElement(tag){
+      if(tag==='a')return {click(){},remove(){}};
       const nodes=new Map();
       currentDialog={setAttribute(){},addEventListener(){},showModal(){},close(){},remove(){},
-        querySelector(key){if(!nodes.has(key))nodes.set(key,{disabled:key==='[data-open]',focus(){},click(){if(!this.disabled)return this.onclick?.()}});return nodes.get(key)}
+        querySelector(key){if(!nodes.has(key))nodes.set(key,{disabled:key==='[data-done]',focus(){},click(){if(!this.disabled)return this.onclick?.()}});return nodes.get(key)}
       };
       return currentDialog;
     }},
@@ -99,42 +101,48 @@ async function main(){
   try{
     const {mountBackup}=await import(pathToFileURL(path.join(root,'src/settings/backup-tool.js')).href);
     mountBackup(rootEl,{onRestore:async()=>{restored++}});
-    async function restoreAndDismiss(success=true,cancel=false,decline=false){
-      const writesBefore=wrote;
+    async function runTask(action,{success=true,cancel=false,decline=false,opensGarden=false}={}){
+      const writesBefore=wrote,before=restored;
       let confirmed=false;
-      const before=restored;
-      const pending=dom.get('#restore').onclick();
+      const pending=dom.get('#'+action).onclick();
       const activeDialog=currentDialog;
-      await dom.get('#restore').onclick();
-      assert.equal(currentDialog,activeDialog,'duplicate restore is blocked');
+      await dom.get('#'+action).onclick();
+      assert.equal(currentDialog,activeDialog,'duplicate action is blocked');
       if(cancel)await currentDialog.querySelector('[data-cancel]').click();
+      const done=currentDialog.querySelector('[data-done]');
       for(let i=0;i<1000;i++){
-        if(currentDialog?.querySelector('[data-cancel]').textContent==='Close')break;
-        const replace=currentDialog.querySelector('[data-replace]');
-        if(replace.onclick&&!confirmed){
-          assert.equal(wrote,writesBefore,'review appears before any garden writes');
-          assert.match(currentDialog.querySelector('[data-summary]').textContent,/replaces all current garden records/);
+        if(!done.disabled)break;
+        const confirm=currentDialog.querySelector('[data-confirm]');
+        if(confirm.onclick&&!confirmed){
+          assert.equal(wrote,writesBefore,'review appears before garden writes');
+          assert.match(currentDialog.querySelector('[data-summary]').textContent,action==='repair'?/matching image files/:/replaces all current garden records/);
           confirmed=true;
-          await currentDialog.querySelector(decline?'[data-cancel]':'[data-replace]').click();
+          await currentDialog.querySelector(decline?'[data-cancel]':'[data-confirm]').click();
         }
         await new Promise(resolve=>setTimeout(resolve,1));
       }
-      assert.equal(currentDialog.querySelector('[data-cancel]').textContent,'Close');
-      assert.equal(restored,before,'restore callback waits for Open garden');
-      assert.equal(currentDialog.querySelector('[data-open]').disabled,!success);
+      assert.equal(done.disabled,false,'result must be dismissible');
+      assert.equal(done.textContent,success?(opensGarden?'Open garden':'Done'):'Close');
+      assert.equal(restored,before,'refresh callback waits for Open garden');
       assert.equal(window.VerdantManagementBusy,true);
-      await currentDialog.querySelector(success?'[data-open]':'[data-cancel]').click();
-      await pending;
+      lastStatus=currentDialog.querySelector('.task-status').textContent;
+      await done.click();await pending;
+      assert.equal(window.VerdantManagementBusy,false);
       currentDialog=null;
     }
+    const restoreAndDismiss=(success=true,cancel=false,decline=false)=>runTask('restore',{success,cancel,decline,opensGarden:true});
     // Exports should always include the default even without a saved record.
-    await dom.get('#create').onclick();
-    assert.match(dom.get('#message').textContent,/Backup ready/);
+    await runTask('create');
+    assert.match(lastStatus,/Backup ready/);
     const exported=disk.get(stored.get('verdant-staged-zip'));
     assert(exported?.size>0);
     const parsed=await Zip.parseVerdantZip(exported);
     assert.deepEqual(plain(parsed.data.settings),[defaults], 'works with older cached photo optimizer helper');
     assert.deepEqual([...new Uint8Array(await parsed.data.images[0].blob.arrayBuffer())],[...imageBytes]);
+    const realTimeout=globalThis.setTimeout;
+    globalThis.setTimeout=(fn,ms,...args)=>ms===120000?0:realTimeout(fn,ms,...args);
+    try{await runTask('download');assert.match(lastStatus,/Download requested/);}
+    finally{globalThis.setTimeout=realTimeout;}
     // Importing a legacy ZIP lacking a photo record must NOT retain this device's WebP profile.
     records.settings.set('photoOptimization',webp);
     const oldZip=await zipFrom([{path:'data.json',blob:new Blob([JSON.stringify(backupObj([]))])},{path:'images/00001.bin',blob}]);
@@ -145,7 +153,7 @@ async function main(){
     assert.deepEqual([...new Uint8Array(await records.images.get('photo1').blob.arrayBuffer())],[...imageBytes]);
     const beforeCancel=wrote;
     await restoreAndDismiss(false,true);
-    assert.match(dom.get('#message').textContent,/Import cancelled/);
+    assert.match(lastStatus,/Operation cancelled/);
     assert.equal(wrote,beforeCancel,'cancelling ZIP verification makes no database changes');
     await restoreAndDismiss(false,false,true);
     assert.equal(wrote,beforeCancel,'declining replacement preserves garden');
@@ -164,7 +172,7 @@ async function main(){
     records.plants.set('p2',{id:'p2',statuses:[journal]});
     const gardenBefore=plain([...records.plants.values()]);
     rootEl.querySelector('#restoreFile').files=[explicitZip];
-    await dom.get('#repair').onclick();
+    await runTask('repair',{opensGarden:true});
     assert.equal(restored,3);
     assert.deepEqual(plain([...records.plants.values()]),gardenBefore,'repair must retain new journal entry');
     assert.deepEqual([...new Uint8Array(await records.images.get('photo1').blob.arrayBuffer())],[...imageBytes],'repaired original photo');
@@ -175,8 +183,21 @@ async function main(){
     const before=wrote;
     rootEl.querySelector('#restoreFile').files=[badZip];
     await restoreAndDismiss(false);
-    assert.match(dom.get('#message').textContent,/Maximum dimension/);
+    assert.match(lastStatus,/Maximum dimension/);
     assert.equal(wrote,before);
+    await runTask('inspect');
+    assert.match(lastStatus,/Garden checked/);
+    await runTask('update',{success:false});
+    assert.match(lastStatus,/Service workers are not supported/);
+    navigator.serviceWorker={getRegistration:async()=>null};
+    await runTask('update');
+    assert.match(lastStatus,/No existing installed worker/);
+    navigator.serviceWorker={getRegistration:async()=>({update:async()=>{}})};
+    await runTask('update');
+    assert.match(lastStatus,/Checked for an updated/);
+    rootEl.querySelector('#restoreFile').files=[];
+    await restoreAndDismiss(false);
+    assert.match(lastStatus,/Select a ZIP/);
     console.log('PASS: default/explicit photo settings, legacy helper compatibility, original photo bytes, invalid input rollback');
   }finally{for(const [key,val] of Object.entries(original)){if(!val)delete globalThis[key];else Object.defineProperty(globalThis,key,val);}}
 }

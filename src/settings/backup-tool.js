@@ -1,3 +1,4 @@
+import {createTaskModal} from './task-modal.js';
 import {diskWriter} from './disk-writer.js';
 import {replaceImportedGarden} from '../import-photos.js';
 /* Dedicated low-memory backup UI. Same origin and IndexedDB as Verdant.
@@ -6,8 +7,8 @@ import {replaceImportedGarden} from '../import-photos.js';
 export function mountBackup(root, {onRestore=()=>{}}={}) {
 const DB_NAME='verdant-garden-v2', STAGED='verdant-staged-zip';
 const $=id=>root.querySelector('#'+id);
-const report=text=>{$('message').textContent=text;};
-let db=null, busy=false;
+let db=null, busy=false, task=null;
+const report=text=>task.report(text);
 function idb(req){return new Promise((ok,fail)=>{req.onsuccess=()=>ok(req.result);req.onerror=()=>fail(req.error||Error('IndexedDB request failed'));});}
 async function openDB(){
   if(db)return db;
@@ -105,7 +106,8 @@ async function exportZip(){
     const zip=await VerdantZip.openZip(file);
     if(zip.entries.size!==expectedCount)throw Error('ZIP verification failed: file count mismatch');
     // Bounded 256 KB CRC checks; no full-file buffers or Base64 conversion.
-    for(const e of zip.entries.values())await zip.verify(e);
+    let checked=0;
+    for(const e of zip.entries.values()){await zip.verify(e);report(`Verifying backup… ${++checked} / ${expectedCount} files`);}
     localStorage.setItem(STAGED,filename);
     $('download').disabled=false;
     report(`Backup ready: ${plants.length} plants and ${imageIds.length} images (${(result.bytes/1048576).toFixed(1)} MiB).\n\nDownload the ZIP and keep another copy somewhere safe. Your garden hasn't changed.`);
@@ -156,99 +158,36 @@ function validateIncoming(parsed){
 async function restore(){
   const file=$('restoreFile').files?.[0];if(!file)throw Error('Select a ZIP backup first');
   if(!window.VerdantZip)throw Error('ZIP library missing');
-  const controller=new AbortController();
-  const {signal}=controller;
-  const dialog=document.createElement('dialog');
-  dialog.className='modal import-progress';
-  dialog.setAttribute('aria-labelledby','import-title');
-  dialog.innerHTML=`<div class="modal-head"><h2 id="import-title">Import garden</h2></div>
-    <div class="modal-body"><p class="import-status" role="status" aria-live="polite" aria-atomic="true"></p>
-    <p class="form-note warning" data-summary hidden></p></div>
-    <div class="modal-footer"><button class="btn btn-outline" data-cancel>Cancel</button>
-    <button class="btn btn-primary" data-replace hidden>Replace garden</button>
-    <button class="btn btn-primary" data-open disabled>Open garden</button></div>`;
-  const summary=dialog.querySelector('[data-summary]');
-  const replace=dialog.querySelector('[data-replace]');
-  const status=dialog.querySelector('.import-status');
-  const cancel=dialog.querySelector('[data-cancel]');
-  const open=dialog.querySelector('[data-open]');
-  const previousFocus=document.activeElement;
-  const update=text=>{status.textContent=text;report(text);};
-  let finished=false,completed=false;
-  const cancelImport=()=>{
-    if(cancel.disabled)return;
-    controller.abort();cancel.disabled=true;update('Cancelling import…');
-  };
-  cancel.onclick=cancelImport;
-  dialog.addEventListener('cancel',event=>{event.preventDefault();if(finished){if(!completed)cancel.click();}else cancelImport();});
-  document.body.append(dialog);
-  dialog.showModal();
-  // Keep management busy until the user dismisses the result or opens the garden.
-  let finish;
-  const dismissed=new Promise(resolve=>{
-    const close=()=>{dialog.close();dialog.remove();previousFocus?.focus();resolve();};
-    finish=(success)=>{
-      finished=true;completed=success;
-      replace.hidden=true;summary.hidden=true;
-      cancel.hidden=success;
-      cancel.disabled=false;cancel.textContent='Close';cancel.onclick=close;
-      open.disabled=!success;
-      open.onclick=async()=>{
-        open.disabled=true;cancel.disabled=true;
-        try{await onRestore();close();}
-        catch(err){update('Garden imported, but could not open it: '+err.message);open.disabled=false;cancel.disabled=false;}
-      };
-      if(success)open.focus();else cancel.focus();
-    };
-  });
-  try{
-    update('Checking ZIP checksums…');
-    let verified=0;
-    const parsed=await VerdantZip.parseVerdantZip(file,name=>update(`Checking ZIP… ${++verified} entries verified. Latest: ${name}`),{signal});
-    signal.throwIfAborted();
-    update('Validating garden records…');
-    // Let the modal paint before synchronous record validation.
-    await new Promise(resolve=>setTimeout(resolve,0));
-    signal.throwIfAborted();
-    const d=validateIncoming(parsed);
-    signal.throwIfAborted();
-    update('Backup checked. Review the summary before replacing your garden.');
-    summary.textContent=`Incoming: ${d.plants.length} plants · ${d.plantTypes.length} types · ${d.images.length} images.\n\nThis replaces all current garden records and photos. Your local Pl@ntNet key stays on this device. Make sure you have backed up your current garden before continuing.`;
-    summary.hidden=false;
-    replace.hidden=false;
-    // Confirmation stays inside the dialog; Cancel/Escape also settles this wait.
-    await new Promise((resolve,reject)=>{
-      const abort=()=>{replace.onclick=null;reject(signal.reason);};
-      signal.addEventListener('abort',abort,{once:true});
-      replace.onclick=()=>{
-        signal.removeEventListener('abort',abort);
-        replace.onclick=null;resolve();
-      };
-      cancel.focus();
-    });
-    replace.hidden=true;
-    summary.hidden=true;
-    signal.throwIfAborted();
-    const current=await openDB();
-    const secret=await get('settings','plantnetKey');
-    const previousTitle=await get('settings','gardenTitle');
-    update(`Staging and verifying images… 0 / ${d.images.length}`);
-    await replaceImportedGarden(current,d,{apiKey:secret,previousTitle,signal,
-      onProgress:update,onCommit:()=>{cancel.disabled=true;update('Finishing import…');}});
-    update(`Import complete: ${d.plants.length} plants, ${d.images.length} images. Open your garden when ready.`);
-    finish(true);
-  }catch(err){
-    update(err?.name==='AbortError'?'Import cancelled. Your existing garden is unchanged.':
-      'Import failed: '+(err?.message||err));
-    finish(false);
-  }
-  await dismissed;
+  const {signal}=task;
+  const update=report;
+  update('Checking ZIP checksums…');
+  let verified=0;
+  const parsed=await VerdantZip.parseVerdantZip(file,name=>update(`Checking ZIP… ${++verified} entries verified. Latest: ${name}`),{signal});
+  signal.throwIfAborted();
+  update('Validating garden records…');
+  // Let the modal paint before synchronous record validation.
+  await new Promise(resolve=>setTimeout(resolve,0));
+  signal.throwIfAborted();
+  const d=validateIncoming(parsed);
+  signal.throwIfAborted();
+  update('Backup checked. Review the summary before replacing your garden.');
+  await task.confirm(`Incoming: ${d.plants.length} plants · ${d.plantTypes.length} types · ${d.images.length} images.\n\nThis replaces all current garden records and photos. Your local Pl@ntNet key stays on this device. Make sure you have backed up your current garden before continuing.`,'Replace garden');
+
+  signal.throwIfAborted();
+  const current=await openDB();
+  const secret=await get('settings','plantnetKey');
+  const previousTitle=await get('settings','gardenTitle');
+  update(`Staging and verifying images… 0 / ${d.images.length}`);
+  await replaceImportedGarden(current,d,{apiKey:secret,previousTitle,signal,
+    onProgress:update,onCommit:()=>task.lock('Finishing import…')});
+  update(`Import complete: ${d.plants.length} plants, ${d.images.length} images. Open your garden when ready.`);
 }
+
 async function repairPhotos(){
   const file=$('restoreFile').files?.[0];if(!file)throw Error('Select your original Verdant ZIP backup first');
   if(!window.VerdantZip)throw Error('ZIP library missing');
   report('Verifying backup photos before repair (no garden changes)…');
-  const parsed=await VerdantZip.parseVerdantZip(file,name=>report('Verified ZIP entry: '+name));
+  const parsed=await VerdantZip.parseVerdantZip(file,name=>report('Verified ZIP entry: '+name),{signal:task.signal});
   const plants=await all('plants');
   const referenced=new Set();
   for(const plant of plants)for(const entry of plant.statuses||[]){
@@ -264,31 +203,48 @@ async function repairPhotos(){
   }
   const selected=parsed.data.images.filter(image=>referenced.has(image.id));
   if(!selected.length)throw Error('No matching image references in this garden. Select the ZIP originally used to import this garden.');
-  if(!confirm(`Repair ${selected.length} matching image files from this ZIP?\n\nPlant records, journal entries, new photos, and settings will NOT be replaced.\n\nOnly photo bytes whose IDs match the current garden will be updated.`))return;
-  await replaceImportedGarden(await openDB(),{images:selected},{imagesOnly:true,onProgress:text=>report(text)});
-  report(`Repaired ${selected.length} matching images. No plant or journal records were replaced. Reloading…`);
-  await onRestore();
+  await task.confirm(`Repair ${selected.length} matching image files from this ZIP?\n\nPlant records, journal entries, new photos, and settings will NOT be replaced.\n\nOnly photo bytes whose IDs match the current garden will be updated.`,'Repair photos');
+  await replaceImportedGarden(await openDB(),{images:selected},{imagesOnly:true,signal:task.signal,onProgress:report,onCommit:()=>task.lock('Finishing photo repair…')});
+  report(`Repaired ${selected.length} matching images. No plant or journal records were replaced. Open your garden when ready.`);
 }
 async function updateWorker(){
   if(!('serviceWorker' in navigator))throw Error('Service workers are not supported');
   const reg=await navigator.serviceWorker.getRegistration('./');
   if(!reg){report('No existing installed worker. Open the main app online to register it.');return;}
   await reg.update();
-  report('Checked for an updated Service Worker. If the new version installed, reopen the garden from the link above. This operation never clears IndexedDB.');
+  report('Checked for an updated Service Worker. If the new version installed, reopen the garden. This operation never clears IndexedDB.');
 }
-async function doTask(fn){if(busy)return;busy=true;
+async function doTask(fn,{title='Garden backup',cancellable=false,opensGarden=false}={}){
+  if(busy)return;
+  const previousFocus=document.activeElement;
+  busy=true;window.VerdantManagementBusy=true;
   for(const id of ['inspect','create','download','restore','repair','update'])$(id).disabled=true;
-  window.VerdantManagementBusy=true;
-  try{await fn();}catch(err){console.error(err);report('Error: '+(err?.message||err)+'\n\nExisting garden data was not deliberately cleared.');}
-  finally{busy=false;window.VerdantManagementBusy=false;for(const id of ['inspect','create','restore','repair','update'])$(id).disabled=false;$('download').disabled=!localStorage.getItem(STAGED);}
+  try{
+    task=createTaskModal({title,cancellable,completionLabel:opensGarden?'Open garden':'Done'});
+    report('Preparing…');
+    try{
+      await fn();
+      task.finish({onDone:opensGarden?onRestore:undefined});
+    }catch(err){
+      if(err?.name==='AbortError')report('Operation cancelled. Your existing garden is unchanged.');
+      else{console.error(err);report('Error: '+(err?.message||err));}
+      task.finish({label:'Close'});
+    }
+    await task.dismissed;
+  }finally{
+    task=null;busy=false;window.VerdantManagementBusy=false;
+    for(const id of ['inspect','create','restore','repair','update'])$(id).disabled=false;
+    $('download').disabled=!localStorage.getItem(STAGED);
+    previousFocus?.focus();
+  }
 }
-$('inspect').onclick=()=>doTask(inspect);
-$('create').onclick=()=>doTask(exportZip);
-$('download').onclick=()=>doTask(download);
-$('restore').onclick=()=>doTask(restore);
-$('repair').onclick=()=>doTask(repairPhotos);
-$('update').onclick=()=>doTask(updateWorker);
-(async()=>{try{const staged=localStorage.getItem(STAGED);if(!staged)return;const file=await(await(await directory()).getFileHandle(staged)).getFile();if(file.size){$('download').disabled=false;report(`Previous completed ZIP available to re-download (${(file.size/1048576).toFixed(1)} MiB).`);}}catch{}})();
+$('inspect').onclick=()=>doTask(inspect,{title:'Check garden'});
+$('create').onclick=()=>doTask(exportZip,{title:'Create backup'});
+$('download').onclick=()=>doTask(download,{title:'Download backup'});
+$('restore').onclick=()=>doTask(restore,{title:'Import garden',cancellable:true,opensGarden:true});
+$('repair').onclick=()=>doTask(repairPhotos,{title:'Repair photos',cancellable:true,opensGarden:true});
+$('update').onclick=()=>doTask(updateWorker,{title:'Application updates'});
+(async()=>{try{const staged=localStorage.getItem(STAGED);if(!staged)return;const file=await(await(await directory()).getFileHandle(staged)).getFile();if(file.size&&!busy){$('download').disabled=false;await doTask(async()=>report(`Previous completed ZIP available to re-download (${(file.size/1048576).toFixed(1)} MiB).`),{title:'Saved backup'});}}catch{}})();
 
   return () => { if (db) { db.close?.(); db=null; } };
 }
